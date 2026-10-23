@@ -98,3 +98,4 @@ docs/              배선, 업로드, 학생·교사 안내, 날씨와 API 설�
 - [배선·Arduino IDE 업로드·문제 해결](docs/hardware-and-upload.md)
 - [날씨 출처·오프라인 사용·시간 정확도](docs/weather.md)
 - [개발 구조·API·검증](docs/development.md)
+- [Vercel 웹앱 배포](docs/vercel.md)

@@ -1,0 +1,127 @@
+{
+  "format": 1,
+  "platform": "linux-x86_64",
+  "description": "Pinned official artifacts for ESP32-C3 only. Other chip compilers/debuggers are deliberately omitted.",
+  "artifacts": [
+    {
+      "kind": "cli",
+      "name": "arduino-cli",
+      "version": "1.3.1",
+      "url": "https://github.com/arduino/arduino-cli/releases/download/v1.3.1/arduino-cli_1.3.1_Linux_64bit.tar.gz",
+      "filename": "arduino-cli_1.3.1_Linux_64bit.tar.gz",
+      "checksum": "sha256:376428d7d45be640c00812a71612e1742edc2f5f9ee3742a2d6da7870e079588",
+      "source_checksum_url": "https://github.com/arduino/arduino-cli/releases/download/v1.3.1/1.3.1-checksums.txt",
+      "strip_root": false
+    },
+    {
+      "package": "esp32",
+      "kind": "hardware",
+      "name": "esp32",
+      "version": "3.3.7",
+      "url": "https://github.com/espressif/arduino-esp32/releases/download/3.3.7/esp32-core-3.3.7.zip",
+      "filename": "esp32-core-3.3.7.zip",
+      "checksum": "sha256:5267dc9a240daf4b8d26d3a1eb4c4f1dc8a40d43d527e6f6ce08cb6baaf6efac",
+      "source_index_url": "https://raw.githubusercontent.com/espressif/arduino-esp32/412c506797b439379d7fad8b47513261c142998e/package_esp32_index.json"
+    },
+    {
+      "package": "esp32",
+      "kind": "tools",
+      "name": "esp-rv32",
+      "version": "2511",
+      "url": "https://github.com/espressif/crosstool-NG/releases/download/esp-14.2.0_20251107/riscv32-esp-elf-14.2.0_20251107-x86_64-linux-gnu.tar.gz",
+      "filename": "riscv32-esp-elf-14.2.0_20251107-x86_64-linux-gnu.tar.gz",
+      "checksum": "sha256:051403b578f5c76ab5fbadb5171ec580df7695b16657a97d27e728b92ba64854",
+      "source_index_url": "https://raw.githubusercontent.com/espressif/arduino-esp32/412c506797b439379d7fad8b47513261c142998e/package_esp32_index.json"
+    },
+    {
+      "package": "esp32",
+      "kind": "tools",
+      "name": "esp32c3-libs",
+      "version": "3.3.7",
+      "url": "https://github.com/espressif/arduino-esp32/releases/download/3.3.7/esp32c3-libs-3.3.7.zip",
+      "filename": "esp32c3-libs-3.3.7.zip",
+      "checksum": "sha256:323ccd4a83e634560c22a294a3118c494e6c63133f69586f285187cf431a3939",
+      "source_index_url": "https://raw.githubusercontent.com/espressif/arduino-esp32/412c506797b439379d7fad8b47513261c142998e/package_esp32_index.json"
+    },
+    {
+      "package": "esp32",
+      "kind": "tools",
+      "name": "esptool_py",
+      "version": "5.1.0",
+      "url": "https://github.com/espressif/esptool/releases/download/v5.1.0/esptool-v5.1.0-linux-amd64.tar.gz",
+      "filename": "esptool-v5.1.0-linux-amd64.tar.gz",
+      "checksum": "sha256:49d572d50f6b1f089d1d81d3bd3bd357fbcc40f4f8fd4874f2dc51ad534abb01",
+      "source_index_url": "https://raw.githubusercontent.com/espressif/arduino-esp32/412c506797b439379d7fad8b47513261c142998e/package_esp32_index.json"
+    },
+    {
+      "package": "builtin",
+      "kind": "tools",
+      "name": "ctags",
+      "version": "5.8-arduino11",
+      "url": "https://github.com/arduino/ctags/releases/download/5.8-arduino11/ctags-5.8-arduino11-x86_64-pc-linux-gnu.tar.bz2",
+      "checksum": "sha512:043cec9c105ff35ba09824ac1f6d84ae7f2bddeea4afe6c0268394611253633e20bc6206945f773dedc217b87804b0f5066efaf685496a48b32d1775c7e62d36",
+      "filename": "ctags-5.8-arduino11-x86_64-pc-linux-gnu.tar.bz2",
+      "source_checksum_url": "https://github.com/arduino/ctags/releases/download/5.8-arduino11/ctags-5.8-arduino11-x86_64-pc-linux-gnu.tar.bz2.sha512"
+    },
+    {
+      "package": "builtin",
+      "kind": "tools",
+      "name": "serial-discovery",
+      "version": "1.4.1",
+      "url": "https://github.com/arduino/serial-discovery/releases/download/v1.4.1/serial-discovery_v1.4.1_Linux_64bit.tar.gz",
+      "checksum": "sha256:519a87afd092307b9618048dbc3d5c888dd93a1ec635148a5d563623ab64abf1",
+      "filename": "serial-discovery_v1.4.1_Linux_64bit.tar.gz",
+      "source_checksum_url": "https://github.com/arduino/serial-discovery/releases/download/v1.4.1/v1.4.1-checksums.txt"
+    },
+    {
+      "package": "builtin",
+      "kind": "tools",
+      "name": "mdns-discovery",
+      "version": "1.0.12",
+      "url": "https://github.com/arduino/mdns-discovery/releases/download/v1.0.12/mdns-discovery_v1.0.12_Linux_64bit.tar.gz",
+      "checksum": "sha256:27d7494c75b50846fb4d08933258759eac09de0cfcff891d613939aaed31a9b2",
+      "filename": "mdns-discovery_v1.0.12_Linux_64bit.tar.gz",
+      "source_checksum_url": "https://github.com/arduino/mdns-discovery/releases/download/v1.0.12/v1.0.12-checksums.txt"
+    },
+    {
+      "kind": "library",
+      "name": "Adafruit_SSD1306",
+      "version": "2.5.16",
+      "repository": "adafruit/Adafruit_SSD1306",
+      "commit": "74cc197f485cd17f68016bc323e10085e8d261f9",
+      "url": "https://codeload.github.com/adafruit/Adafruit_SSD1306/tar.gz/74cc197f485cd17f68016bc323e10085e8d261f9",
+      "filename": "Adafruit_SSD1306-2.5.16.tar.gz",
+      "checksum": "sha256:7c78a147b130fafdfcfd56dd30c5d06c18df4e66fd3d8eb0fe735bbcb868736d"
+    },
+    {
+      "kind": "library",
+      "name": "Adafruit_GFX_Library",
+      "version": "1.12.5",
+      "repository": "adafruit/Adafruit-GFX-Library",
+      "commit": "7ab6d09178a75a65b72d26dcbba3ec2f11882366",
+      "url": "https://codeload.github.com/adafruit/Adafruit-GFX-Library/tar.gz/7ab6d09178a75a65b72d26dcbba3ec2f11882366",
+      "filename": "Adafruit_GFX_Library-1.12.5.tar.gz",
+      "checksum": "sha256:c6b911eb261ae47848b17cca4df1c5b35add7473a719a0f87f33bec4f5a865b5"
+    },
+    {
+      "kind": "library",
+      "name": "Adafruit_BusIO",
+      "version": "1.17.4",
+      "repository": "adafruit/Adafruit_BusIO",
+      "commit": "3b8364267c3ee6e16bad91bc2101aefbd5b5915f",
+      "url": "https://codeload.github.com/adafruit/Adafruit_BusIO/tar.gz/3b8364267c3ee6e16bad91bc2101aefbd5b5915f",
+      "filename": "Adafruit_BusIO-1.17.4.tar.gz",
+      "checksum": "sha256:e5d8163c527af3c868f6ff5eaf6b92ed6c6baf297b9c39906611c817d553f5eb"
+    },
+    {
+      "kind": "library",
+      "name": "ArduinoJson",
+      "version": "7.4.2",
+      "repository": "bblanchon/ArduinoJson",
+      "commit": "733bc4ee82630c88c0a619a883cd3a206efae977",
+      "url": "https://codeload.github.com/bblanchon/ArduinoJson/tar.gz/733bc4ee82630c88c0a619a883cd3a206efae977",
+      "filename": "ArduinoJson-7.4.2.tar.gz",
+      "checksum": "sha256:dbe5dde2fe21d2bb52c808099d49062b9e7db4262b3fcdf1e448df7c493f1f54"
+    }
+  ]
+}

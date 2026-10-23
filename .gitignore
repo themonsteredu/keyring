@@ -1,0 +1,9 @@
+node_modules/
+.cache/
+.build/
+firmware/Keyring/build/
+test-results/
+playwright-report/
+__pycache__/
+*.pyc
+.DS_Store

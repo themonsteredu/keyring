@@ -5,6 +5,7 @@ const executablePath = process.env.CHROMIUM_PATH ||
 module.exports = defineConfig({
   testDir: './tests/browser',
   fullyParallel: false,
+  workers: 1, // All tests share one explicitly simulated board.
   use: { baseURL: 'http://127.0.0.1:8765', browserName: 'chromium',
     viewport: { width: 390, height: 844 }, trace: 'retain-on-failure',
     launchOptions: { executablePath,

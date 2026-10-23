@@ -1,6 +1,6 @@
 # Arduino IDE용 다운로드
 
-[Keyring-Arduino.zip](Keyring-Arduino.zip)에는 보드에 업로드할 스케치와 필요한 헤더 파일 3개가 들어 있습니다. 압축을 풀고 **`Keyring/Keyring.ino`**를 Arduino IDE로 엽니다. 같은 폴더의 `.h` 파일은 함께 둡니다.
+[Keyring-Arduino.zip](Keyring-Arduino.zip)에는 블록 코딩을 실행하는 펌웨어 2.0.0과 필요한 헤더 파일 5개가 들어 있습니다. 압축을 풀고 **`Keyring/Keyring.ino`**를 Arduino IDE로 엽니다. 같은 폴더의 `.h` 파일은 함께 둡니다.
 
 기존 **Adafruit SSD1306·Adafruit GFX·Adafruit BusIO** 라이브러리에 **ArduinoJson 7.4.2**를 추가 설치합니다. 보드는 **ESP32C3 Dev Module**, ESP32 Core는 **3.3.7**을 사용합니다. USB CDC On Boot는 Enabled, Flash Size는 4MB, Partition Scheme은 Huge APP으로 설정하고 연결한 USB 포트로 업로드합니다.
 

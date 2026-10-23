@@ -27,6 +27,10 @@ const reducedMotion = window.matchMedia('(prefers-reduced-motion: reduce)');
 let animate = !reducedMotion.matches;
 const frameCache = new Map();
 let animationTimer;
+let activeTab = 'blocks';
+let programPreview = null;
+let blocksStudio = null;
+let previewStartedAt = performance.now();
 
 const sameSettings = (left, right) => left && right && ['character', 'emotion', 'view'].every((key) => left[key] === right[key]);
 const text = (id, value) => { $(id).textContent = value; };
@@ -54,12 +58,60 @@ function updateControls() {
   for (const [name, value] of Object.entries(selection)) {
     document.querySelectorAll(`input[name="${name}"]`).forEach((input) => { input.checked = input.value === value; });
   }
-  const character = CHARACTERS.find(([value]) => value === selection.character)?.[1] || '토끼';
-  const emotion = EMOTIONS.find(([value]) => value === selection.emotion)?.[2] || '행복한';
-  text('preview-name', `${emotion} ${character}`);
-  $('preview').setAttribute('aria-label', `${emotion} ${character}, 실제 OLED와 같은 128×64 픽셀 미리보기`);
+  updatePreviewTitle();
   updateSaveControls();
   drawAll();
+}
+
+function displayedSettings() {
+  if (activeTab === 'customize') return selection;
+  if (activeTab === 'weather') return { ...selection, view: 'weather' };
+  return programPreview || selection;
+}
+function updatePreviewTitle() {
+  const shown = displayedSettings();
+  const character = CHARACTERS.find(([value]) => value === shown.character)?.[1] || '토끼';
+  const emotion = EMOTIONS.find(([value]) => value === shown.emotion)?.[2] || '행복한';
+  const weatherView = shown.view === 'weather';
+  text('preview-name', weatherView ? '우리 동네 날씨' : `${emotion} ${character}`);
+  text('preview-caption', weatherView ? localWeather ? '저장된 예보를 보여 줘요' : '날씨 탭에서 예보를 담아 주세요' : '키링과 똑같은 픽셀로 보여요');
+  $('preview').setAttribute('aria-label', weatherView ? '저장된 날씨 화면 미리보기' : `${emotion} ${character}, 실제 OLED와 같은 128×64 픽셀 미리보기`);
+}
+function activateTab(name, focus = false) {
+  if (!['customize', 'blocks', 'weather'].includes(name)) return;
+  activeTab = name; document.body.dataset.activeTab = name;
+  for (const tab of document.querySelectorAll('[role="tab"]')) {
+    const selected = tab.id === `tab-${name}`;
+    tab.classList.toggle('active', selected); tab.setAttribute('aria-selected', String(selected)); tab.tabIndex = selected ? 0 : -1;
+    $(tab.getAttribute('aria-controls')).hidden = !selected;
+  }
+  if (focus) $(`tab-${name}`).focus();
+  updatePreviewTitle(); drawMain();
+  window.dispatchEvent(new Event('resize'));
+}
+for (const [index, tab] of [...document.querySelectorAll('[role="tab"]')].entries()) {
+  const names = ['customize', 'blocks', 'weather'];
+  tab.addEventListener('click', () => activateTab(names[index]));
+  tab.addEventListener('keydown', (event) => {
+    let next = index;
+    if (event.key === 'ArrowRight') next = (index + 1) % 3;
+    else if (event.key === 'ArrowLeft') next = (index + 2) % 3;
+    else if (event.key === 'Home') next = 0;
+    else if (event.key === 'End') next = 2;
+    else return;
+    event.preventDefault(); activateTab(names[next], true);
+  });
+}
+function showProgramPreview(state) {
+  if (state.stopped) programPreview = null;
+  else programPreview = { ...state };
+  $('preview-run-dot').classList.toggle('running', !!state.running);
+  text('preview-run-state', state.running ? '코드 실행 중 · 화면에서 먼저 확인해요' : state.stopped ? '실행을 멈췄어요. 다시 바꿔 볼까요?' : '실행 완료 · 마지막 모습을 보여 줘요');
+  updatePreviewTitle(); drawMain();
+}
+function showProgramStatus(message, kind = '') {
+  text('preview-run-state', message);
+  $('preview-run-state').classList.toggle('error', kind === 'error');
 }
 
 function updateButtonLocks() {
@@ -83,7 +135,8 @@ function updateSaveControls() {
 document.querySelectorAll('fieldset').forEach((fieldset) => fieldset.addEventListener('change', (event) => {
   const { name, value } = event.target;
   if (!(name in selection)) return;
-  selection[name] = value; phase = 0; updateControls();
+  blocksStudio?.stop({ localOnly: true });
+  programPreview = null; selection[name] = value; phase = 0; updateControls();
 }));
 
 /** The same vertical-page buffer bytes that Adafruit SSD1306 sends to the OLED. */
@@ -107,9 +160,106 @@ function drawFrame(canvas, encoded, mini = false) {
 }
 function drawMain() {
   if (!atlas) return;
-  const frames = atlas.data[`${selection.character}:${selection.emotion}`];
+  const shown = displayedSettings();
+  const cycle = (performance.now() - previewStartedAt) % 40000;
+  if (shown.view === 'weather' || (shown.view === 'auto' && cycle >= 15000)) { drawWeatherScreen(); return; }
+  const frames = atlas.data[`${shown.character}:${shown.emotion}`];
   if (frames) drawFrame($('preview'), frames[phase % atlas.frames]);
 }
+
+/**
+ * Classic 5x7 font and integer drawing primitives adapted from Adafruit_GFX.
+ * Copyright (c) 2012 Adafruit Industries. All rights reserved.
+ * Redistribution and use in source and binary forms, with or without modification,
+ * are permitted provided that source redistributions retain this notice, these
+ * conditions and disclaimer; binary redistributions reproduce them in supporting
+ * documentation and/or other materials.
+ * THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS AND CONTRIBUTORS "AS IS"
+ * AND ANY EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT LIMITED TO, THE
+ * IMPLIED WARRANTIES OF MERCHANTABILITY AND FITNESS FOR A PARTICULAR PURPOSE
+ * ARE DISCLAIMED. IN NO EVENT SHALL THE COPYRIGHT HOLDER OR CONTRIBUTORS BE
+ * LIABLE FOR ANY DIRECT, INDIRECT, INCIDENTAL, SPECIAL, EXEMPLARY, OR
+ * CONSEQUENTIAL DAMAGES (INCLUDING, BUT NOT LIMITED TO, PROCUREMENT OF
+ * SUBSTITUTE GOODS OR SERVICES; LOSS OF USE, DATA, OR PROFITS; OR BUSINESS
+ * INTERRUPTION) HOWEVER CAUSED AND ON ANY THEORY OF LIABILITY, WHETHER IN
+ * CONTRACT, STRICT LIABILITY, OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE)
+ * ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE
+ * POSSIBILITY OF SUCH DAMAGE.
+ */
+const OLED_FONT = Uint8Array.from(atob('AAAAAAAAAF8AAAAHAAcAFH8UfxQkKn8qEiMTCGRiNklWIFAACAcDAAAcIkEAAEEiHAAqHH8cKggIPggIAIBwMAAICAgICAAAYGAAIBAIBAI+UUlFPgBCf0AAcklJSUYhQUlNMxgUEn8QJ0VFRTk8SklJMUEhEQkHNklJSTZGSUkpHgAAFAAAAEA0AAAACBQiQRQUFBQUAEEiFAgCAVkJBj5BXVlOfBIREnx/SUlJNj5BQUEif0FBQT5/SUlJQX8JCQkBPkFBUXN/CAgIfwBBf0EAIEBBPwF/CBQiQX9AQEBAfwIcAn9/BAgQfz5BQUE+fwkJCQY+QVEhXn8JGSlGJklJSTIDAX8BAz9AQEA/HyBAIB8/QDhAP2MUCBRjAwR4BANhWUlNQwB/QUFBAgQIECAAQUFBfwQCAQIEQEBAQEAAAwcIACBUVHhAfyhERDg4REREKDhERCh/OFRUVBgACH4JAhikpJx4fwgEBHgARH1AACBAQD0AfxAoRAAAQX9AAHwEeAR4fAgEBHg4REREOPwYJCQYGCQkGPx8CAQECEhUVFQkBAQ/RCQ8QEAgfBwgQCAcPEAwQDxEKBAoREyQkJB8RGRUTEQACDZBAAAAdwAAAEE2CAACAQIEAjwmIyY8'), (character) => character.charCodeAt(0));
+function drawWeatherScreen() {
+  const context = $('preview').getContext('2d', { alpha: false });
+  context.fillStyle = '#121f1d'; context.fillRect(0, 0, 128, 64); context.fillStyle = '#d2ecc1';
+  const pixel = (x, y) => context.fillRect(Math.trunc(x), Math.trunc(y), 1, 1);
+  const vertical = (x, y, height) => context.fillRect(x, y, 1, height);
+  const horizontal = (x, y, width) => context.fillRect(x, y, width, 1);
+  function words(value, x, y, size = 1) {
+    for (const character of String(value)) {
+      const code = character.charCodeAt(0) - 32;
+      if (code >= 0 && code < 96) for (let column = 0; column < 5; column += 1) {
+        const bits = OLED_FONT[code * 5 + column];
+        for (let row = 0; row < 8; row += 1) if (bits & (1 << row)) context.fillRect(x + column * size, y + row * size, size, size);
+      }
+      x += 6 * size;
+    }
+  }
+  function line(x0, y0, x1, y1) {
+    x0 = Math.trunc(x0); y0 = Math.trunc(y0); x1 = Math.trunc(x1); y1 = Math.trunc(y1);
+    const steep = Math.abs(y1 - y0) > Math.abs(x1 - x0);
+    if (steep) { [x0, y0] = [y0, x0]; [x1, y1] = [y1, x1]; }
+    if (x0 > x1) { [x0, x1] = [x1, x0]; [y0, y1] = [y1, y0]; }
+    const dx = x1 - x0; const dy = Math.abs(y1 - y0); const step = y0 < y1 ? 1 : -1;
+    let error = Math.trunc(dx / 2);
+    for (; x0 <= x1; x0 += 1) { if (steep) pixel(y0, x0); else pixel(x0, y0); error -= dy; if (error < 0) { y0 += step; error += dx; } }
+  }
+  function circle(cx, cy, radius) {
+    let f = 1 - radius; let dx = 1; let dy = -2 * radius; let x = 0; let y = radius;
+    pixel(cx, cy + radius); pixel(cx, cy - radius); pixel(cx + radius, cy); pixel(cx - radius, cy);
+    while (x < y) {
+      if (f >= 0) { y -= 1; dy += 2; f += dy; } x += 1; dx += 2; f += dx;
+      for (const [a, b] of [[x, y], [-x, y], [x, -y], [-x, -y], [y, x], [-y, x], [y, -x], [-y, -x]]) pixel(cx + a, cy + b);
+    }
+  }
+  function fillHelper(cx, cy, radius, corners, delta) {
+    let f = 1 - radius; let dx = 1; let dy = -2 * radius; let x = 0; let y = radius; let px = 0; let py = y;
+    delta += 1;
+    while (x < y) {
+      if (f >= 0) { y -= 1; dy += 2; f += dy; } x += 1; dx += 2; f += dx;
+      if (x < y + 1) { if (corners & 1) vertical(cx + x, cy - y, 2 * y + delta); if (corners & 2) vertical(cx - x, cy - y, 2 * y + delta); }
+      if (y !== py) { if (corners & 1) vertical(cx + py, cy - px, 2 * px + delta); if (corners & 2) vertical(cx - py, cy - px, 2 * px + delta); py = y; } px = x;
+    }
+  }
+  function filledCircle(x, y, radius) { vertical(x, y - radius, radius * 2 + 1); fillHelper(x, y, radius, 3, 0); }
+  function roundRect(x, y, width, height, radius) { context.fillRect(x + radius, y, width - 2 * radius, height); fillHelper(x + width - radius - 1, y + radius, radius, 1, height - 2 * radius - 1); fillHelper(x + radius, y + radius, radius, 2, height - 2 * radius - 1); }
+  function weatherIcon(x, y, code, small) {
+    const kind = [95, 96, 99].includes(code) ? 'storm' : [45, 48].includes(code) ? 'fog' : weatherKind(code);
+    const radius = small ? 3 : 8; const cx = x + (small ? 5 : 14); const cy = y + (small ? 5 : 14);
+    if (kind === 'sun') {
+      circle(cx, cy, radius);
+      for (let index = 0; index < 8; index += 1) { const angle = Math.fround(index * Math.fround(Math.PI) / 4); line(cx + Math.fround(Math.cos(angle)) * (radius + 2), cy + Math.fround(Math.sin(angle)) * (radius + 2), cx + Math.fround(Math.cos(angle)) * (radius + 4), cy + Math.fround(Math.sin(angle)) * (radius + 4)); }
+      return;
+    }
+    const width = small ? 10 : 29; const height = small ? 5 : 12; const bottom = y + (small ? 9 : 23);
+    roundRect(x, y + (small ? 2 : 5), width, height, small ? 2 : 5);
+    filledCircle(x + Math.trunc(width / 3), y + (small ? 3 : 7), small ? 3 : 7);
+    filledCircle(x + Math.trunc(2 * width / 3), y + (small ? 2 : 4), small ? 2 : 6);
+    if (kind === 'rain') { line(x + 2, bottom, x, bottom + (small ? 2 : 5)); line(x + Math.trunc(width / 2), bottom, x + Math.trunc(width / 2) - 2, bottom + (small ? 2 : 5)); line(x + width - 2, bottom, x + width - 4, bottom + (small ? 2 : 5)); }
+    else if (kind === 'snow') { horizontal(x + Math.trunc(width / 2) - 2, bottom + 1, 5); vertical(x + Math.trunc(width / 2), bottom - 1, 5); if (!small) { line(x + Math.trunc(width / 2) - 2, bottom - 1, x + Math.trunc(width / 2) + 2, bottom + 3); line(x + Math.trunc(width / 2) + 2, bottom - 1, x + Math.trunc(width / 2) - 2, bottom + 3); } }
+    else if (kind === 'storm') { line(x + Math.trunc(width / 2) + 2, bottom - 2, x + Math.trunc(width / 2) - 2, bottom + 2); line(x + Math.trunc(width / 2) - 2, bottom + 2, x + Math.trunc(width / 2) + 2, bottom + 2); line(x + Math.trunc(width / 2) + 2, bottom + 2, x + Math.trunc(width / 2) - 2, bottom + 6); }
+    else if (kind === 'fog') { horizontal(x, bottom, width); horizontal(x + 2, bottom + 3, width - 4); }
+  }
+  const clock = weatherOnDevice ? { trusted: device?.clock?.trusted, now: typeof device?.clock?.now === 'number' ? device.clock.now + Math.floor((performance.now() - deviceClockReadAt) / 1000) : null } : { trusted: true, now: Math.floor(Date.now() / 1000) };
+  const status = weatherStatus(localWeather, clock.trusted, clock.now);
+  words({ missing: 'NO WEATHER', sample: 'SAMPLE', 'clock-unknown': 'TIME UNKNOWN', stale: 'OLD FORECAST', fresh: 'SYNCED' }[status], 0, 0);
+  if (!localWeather) { words('Connect phone Wi-Fi', 0, 22); words('192.168.4.1', 0, 34); words('Import weather JSON', 0, 48); return; }
+  const elapsed = performance.now() - previewStartedAt; const cycle = elapsed % 40000; const shown = displayedSettings();
+  const page = shown.view === 'auto' && cycle >= 15000 ? Math.floor((cycle - 15000) / 5000) : Math.floor(elapsed / 5000) % 5;
+  const parts = (epoch) => { const date = new Date((epoch + 9 * 3600) * 1000); const pad = (value) => String(value).padStart(2, '0'); return { year: pad(date.getUTCFullYear() % 100), month: pad(date.getUTCMonth() + 1), day: pad(date.getUTCDate()), hour: pad(date.getUTCHours()), minute: pad(date.getUTCMinutes()) }; };
+  const received = parts(localWeather.fetchedAt); words(page ? `${page}/4` : 'NOW', 104, 0); words(`UPD${received.year}/${received.month}/${received.day} ${received.hour}:${received.minute}K`, 0, 10);
+  if (!page) { weatherIcon(4, 26, localWeather.current.code, false); words(`${Math.fround(localWeather.current.temperature).toFixed(1)}C`, 43, 28, 2); const current = parts(localWeather.current.time); words(`AT ${current.month}/${current.day} ${current.hour}:${current.minute} KST`, 0, 55); }
+  else localWeather.hourly.slice((page - 1) * 6, page * 6).forEach((point, index) => { const x = index % 2 * 64; const y = 22 + Math.floor(index / 2) * 14; words(parts(point.time).hour, x, y); words(`${point.temperature < 0 ? -Math.round(-point.temperature) : Math.round(point.temperature)}C`, x + 14, y); weatherIcon(x + 48, y - 1, point.code, true); });
+}
+
 function drawAll() {
   if (!atlas) return;
   drawMain();
@@ -139,6 +289,7 @@ async function api(path, payload) {
     if (!response.ok) {
       let message = `키링 응답 오류 (${response.status})`;
       try { const error = await response.json(); if (typeof error.error === 'string') message = error.error; } catch { /* A development static server can send an HTML 404. */ }
+      if (path.startsWith('program') && response.status === 404) message = '블록 코딩을 쓰려면 키링 업데이트가 필요해요. 선생님께 최신 펌웨어 업로드를 부탁해 주세요.';
       throw new Error(message);
     }
     return await response.json();
@@ -175,6 +326,7 @@ async function readState(adoptSettings = false) {
     localWeather = validateWeather(state.weather); weatherOnDevice = true;
   } else { localWeather = null; weatherOnDevice = false; }
   renderWeather();
+  blocksStudio?.refreshDevice();
 }
 async function connect() {
   text('connection-text', '키링 확인 중');
@@ -188,7 +340,7 @@ async function connect() {
       setMessage('weather-action-state', '키링은 연결됐지만 시각을 맞추지 못했어요. 휴대폰 날짜를 확인하고 시각 맞추기를 눌러 주세요.', true);
     }
   } catch {
-    connected = false; device = null; showConnection();
+    connected = false; device = null; showConnection(); blocksStudio?.refreshDevice();
   }
 }
 $('reconnect').addEventListener('click', connect);
@@ -232,7 +384,7 @@ function renderWeather() {
   $('weather-content').hidden = !localWeather;
   $('download-weather').disabled = !localWeather;
   const badge = $('weather-badge');
-  if (!localWeather) { badge.className = 'weather-badge neutral'; badge.textContent = '저장된 날씨 없음'; return; }
+  if (!localWeather) { badge.className = 'weather-badge neutral'; badge.textContent = '저장된 날씨 없음'; updatePreviewTitle(); drawMain(); return; }
   const clock = weatherOnDevice ? { trusted: device?.clock?.trusted, now: typeof device?.clock?.now === 'number' ? device.clock.now + Math.floor((performance.now() - deviceClockReadAt) / 1000) : null } : { trusted: true, now: Math.floor(Date.now() / 1000) };
   const status = weatherStatus(localWeather, clock?.trusted, clock?.now);
   const badgeText = { sample: '연습용 · 실제 날씨 아님', 'clock-unknown': '시각 확인 필요', stale: '오래된 예보', fresh: weatherOnDevice ? '키링에 저장됨' : '휴대폰에서 미리보기' }[status];
@@ -262,6 +414,7 @@ function renderWeather() {
     const temperature = document.createElement('strong'); temperature.textContent = `${Math.round(point.temperature)}°`;
     item.append(time, glyph, temperature); forecast.append(item);
   });
+  updatePreviewTitle(); drawMain();
 }
 async function storeWeather(weather) {
   localWeather = validateWeather(weather); weatherOnDevice = false; renderWeather();
@@ -334,6 +487,14 @@ $('sync-time').addEventListener('click', async () => {
 
 async function init() {
   updateAnimationButton(); updateControls();
+  try {
+    const { initializeBlocks } = await import('./blocks-editor.mjs');
+    blocksStudio = await initializeBlocks({ getDevice: () => connected ? device : null, getWeather: () => localWeather, api, onPreview: showProgramPreview, onStatus: showProgramStatus });
+  } catch (error) {
+    text('program-status', `코딩 도구를 불러오지 못했어요. 새로고침해 주세요. (${error.message})`);
+    $('program-status').classList.add('error');
+    $('program-run').disabled = true;
+  }
   const spriteRequest = fetch('/sprites.json').then((response) => { if (!response.ok) throw new Error('sprites'); return response.json(); }).then((data) => {
     if (data.width !== 128 || data.height !== 64 || data.frames !== 32 || !data.data) throw new Error('atlas');
     atlas = data; drawAll(); runAnimation();

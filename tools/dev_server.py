@@ -16,10 +16,17 @@ VIEWS = ("character", "weather", "auto")
 CODES = (0, 1, 2, 3, 45, 48, 51, 53, 55, 56, 57, 61, 63, 65, 66, 67,
          71, 73, 75, 77, 80, 81, 82, 85, 86, 95, 96, 99)
 MIN_EPOCH, MAX_EPOCH = 1704067200, 4102444800
+MAX_BODY_BYTES = 16 * 1024
+WEATHER_KINDS = ("sun", "cloud", "rain", "snow")
 
 
 def number(value):
-    return isinstance(value, (int, float)) and not isinstance(value, bool) and math.isfinite(value)
+    if not isinstance(value, (int, float)) or isinstance(value, bool):
+        return False
+    try:
+        return math.isfinite(value)
+    except OverflowError:
+        return False
 
 
 def epoch(value):
@@ -53,6 +60,71 @@ def validate_weather(data):
     return copy.deepcopy(data)
 
 
+def validate_program(data):
+    """Validate the same bounded, declarative block format as the real device.
+
+    This is a simulated API adapter; native firmware/JavaScript VM tests remain
+    the authority for the physical device and browser execution respectively.
+    """
+    if not isinstance(data, dict) or set(data) != {"schema", "enabled", "loop", "blocks"}:
+        raise ValueError("프로그램 형식의 필수 항목을 확인해 주세요.")
+    if type(data["schema"]) is not int or data["schema"] != 1:
+        raise ValueError("지원하지 않는 프로그램 버전이에요.")
+    if type(data["enabled"]) is not bool or type(data["loop"]) is not bool:
+        raise ValueError("프로그램 실행 설정이 올바르지 않아요.")
+    if not isinstance(data["blocks"], list) or not data["blocks"]:
+        raise ValueError("프로그램에 블록이 하나 이상 필요해요.")
+    nodes = 0
+
+    def visit(blocks, depth):
+        nonlocal nodes
+        if not isinstance(blocks, list):
+            raise ValueError("블록 목록을 확인해 주세요.")
+        if blocks and depth > 4:
+            raise ValueError("블록은 4단계까지만 넣을 수 있어요.")
+        for block in blocks:
+            nodes += 1
+            if nodes > 64:
+                raise ValueError("블록은 64개까지 사용할 수 있어요.")
+            if not isinstance(block, dict):
+                raise ValueError("블록 형식을 확인해 주세요.")
+            kind = block.get("type")
+            if kind in ("character", "emotion"):
+                choices = CHARACTERS if kind == "character" else EMOTIONS
+                if set(block) != {"type", "value"} or block["value"] not in choices:
+                    raise ValueError("캐릭터 또는 감정 블록 값을 확인해 주세요.")
+            elif kind == "wait":
+                if set(block) != {"type", "ms"} or type(block["ms"]) is not int or not 100 <= block["ms"] <= 30000:
+                    raise ValueError("기다리기는 100~30000밀리초의 정수로 정해 주세요.")
+            elif kind == "weather":
+                if set(block) != {"type"}:
+                    raise ValueError("날씨 표시 블록의 형식을 확인해 주세요.")
+            elif kind == "repeat":
+                if set(block) != {"type", "count", "blocks"} or type(block["count"]) is not int or not 1 <= block["count"] <= 20:
+                    raise ValueError("반복 횟수는 1~20의 정수로 정해 주세요.")
+                visit(block["blocks"], depth + 1)
+            elif kind == "ifWeather":
+                if set(block) != {"type", "kind", "then", "else"} or block["kind"] not in WEATHER_KINDS:
+                    raise ValueError("날씨 조건 블록의 형식을 확인해 주세요.")
+                visit(block["then"], depth + 1)
+                visit(block["else"], depth + 1)
+            else:
+                raise ValueError("알 수 없는 블록이에요.")
+
+    visit(data["blocks"], 1)
+    return copy.deepcopy(data)
+
+
+def weather_kind(code):
+    if code in (0, 1):
+        return "sun"
+    if code in (2, 3, 45, 48):
+        return "cloud"
+    if code in (71, 73, 75, 77, 85, 86):
+        return "snow"
+    return "rain"
+
+
 class MockDevice:
     def __init__(self):
         self.lock = threading.Lock()
@@ -63,11 +135,84 @@ class MockDevice:
     def reset(self):
         self.character, self.emotion, self.view = "rabbit", "happy", "character"
         self.weather = None
+        self.program = None
+        self.stop_program()
+
+    def stop_program(self):
+        self.program_running = False
+        self.frames = []
+        self.deadline_ms = 0
+        self.last_tick_ms = 0
+        self.rendered = {"character": self.character, "emotion": self.emotion, "view": self.view}
+
+    def start_program(self, now_ms=None):
+        self.stop_program()
+        self.last_tick_ms = int(time.monotonic() * 1000) if now_ms is None else now_ms
+        if self.program is not None and self.program["enabled"]:
+            self.frames = [{"blocks": self.program["blocks"], "index": 0, "remaining": 1}]
+            self.program_running = True
+
+    def tick_program(self, now_ms=None):
+        """Advance the explicitly simulated VM with a strict 16-step budget.
+
+        Called on state reads rather than a hardware loop. Waits use monotonic
+        deadlines; a delayed HTTP request never replays missed real-time frames.
+        """
+        now_ms = int(time.monotonic() * 1000) if now_ms is None else now_ms
+        if not self.program_running:
+            return
+        if now_ms < self.last_tick_ms:
+            self.stop_program()
+            return
+        self.last_tick_ms = now_ms
+        if now_ms < self.deadline_ms:
+            return
+        for _ in range(16):
+            frame = self.frames[-1]
+            if frame["index"] >= len(frame["blocks"]):
+                if frame["remaining"] > 1:
+                    frame["remaining"] -= 1
+                    frame["index"] = 0
+                    continue
+                self.frames.pop()
+                if self.frames:
+                    continue
+                if not self.program["loop"]:
+                    self.program_running = False
+                    return
+                self.frames = [{"blocks": self.program["blocks"], "index": 0, "remaining": 1}]
+                self.deadline_ms = now_ms + 100
+                return
+            block = frame["blocks"][frame["index"]]
+            frame["index"] += 1
+            kind = block["type"]
+            if kind in ("character", "emotion"):
+                self.rendered[kind] = block["value"]
+                self.rendered["view"] = "character"
+            elif kind == "weather":
+                self.rendered["view"] = "weather"
+            elif kind == "wait":
+                self.deadline_ms = now_ms + block["ms"]
+                return
+            elif kind == "repeat":
+                if block["blocks"]:
+                    self.frames.append({"blocks": block["blocks"], "index": 0, "remaining": block["count"]})
+            elif kind == "ifWeather":
+                current_kind = weather_kind(self.weather["current"]["code"]) if self.weather else None
+                branch = block["then"] if current_kind == block["kind"] else block["else"]
+                if branch:
+                    self.frames.append({"blocks": branch, "index": 0, "remaining": 1})
+
+    def reboot(self):
+        self.clock_base = None
+        self.monotonic_base = time.monotonic()
+        self.start_program()
 
     def now(self):
         return None if self.clock_base is None else self.clock_base + int(time.monotonic() - self.monotonic_base)
 
     def state(self):
+        self.tick_program()
         now = self.now()
         status = "missing"
         if self.weather:
@@ -82,8 +227,11 @@ class MockDevice:
                 status = "fresh"
         return {"character": self.character, "emotion": self.emotion, "view": self.view,
                 "ssid": "개발용 모의 키링", "simulated": True, "oled": True, "storage": True,
+                "firmware": "2.0.0-mock", "capabilities": {"blockPrograms": True},
                 "clock": {"trusted": now is not None, "now": now},
-                "weather": self.weather, "weatherStatus": status}
+                "weather": self.weather, "weatherStatus": status,
+                "program": self.program, "programRunning": self.program_running,
+                "rendered": self.rendered}
 
 
 class Handler(SimpleHTTPRequestHandler):
@@ -117,7 +265,7 @@ class Handler(SimpleHTTPRequestHandler):
             return self.reply(415, {"ok": False, "error": "JSON 형식이 필요해요."})
         try:
             length = int(self.headers.get("Content-Length", "0"))
-            if not 0 < length <= 10240:
+            if not 0 < length <= MAX_BODY_BYTES:
                 return self.reply(413, {"ok": False, "error": "요청 크기를 확인해 주세요."})
             data = json.loads(self.rfile.read(length))
             if not isinstance(data, dict):
@@ -128,6 +276,23 @@ class Handler(SimpleHTTPRequestHandler):
                     if data.get("character") not in CHARACTERS or data.get("emotion") not in EMOTIONS or data.get("view") not in VIEWS:
                         raise ValueError("캐릭터·감정·화면을 확인해 주세요.")
                     d.character, d.emotion, d.view = data["character"], data["emotion"], data["view"]
+                    if d.program is not None:
+                        d.program["enabled"] = False
+                    d.stop_program()
+                elif self.path == "/api/program":
+                    candidate = validate_program(data)
+                    d.program = candidate
+                    d.start_program()
+                elif self.path == "/api/program/control":
+                    if set(data) != {"action"} or data["action"] not in ("start", "stop"):
+                        raise ValueError("프로그램 시작 또는 멈추기를 골라 주세요.")
+                    if d.program is None:
+                        raise ValueError("프로그램을 먼저 저장해 주세요.")
+                    d.program["enabled"] = data["action"] == "start"
+                    if d.program["enabled"]:
+                        d.start_program()
+                    else:
+                        d.stop_program()
                 elif self.path == "/api/time":
                     if not epoch(data.get("epoch")):
                         raise ValueError("기준 시각을 확인해 주세요.")
@@ -141,11 +306,11 @@ class Handler(SimpleHTTPRequestHandler):
                     d.reset()
                 elif self.path == "/api/debug/reboot":
                     # Test-only simulated power cycle; no hardware fidelity claim.
-                    d.clock_base = None
+                    d.reboot()
                 else:
                     return self.reply(404, {"ok": False, "error": "알 수 없는 요청이에요."})
             return self.reply(200, {"ok": True, "saved": self.path != "/api/time"})
-        except (ValueError, UnicodeError) as exc:
+        except (ValueError, UnicodeError, RecursionError) as exc:
             return self.reply(400, {"ok": False, "error": str(exc)})
 
 

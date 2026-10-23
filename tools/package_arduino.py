@@ -9,7 +9,7 @@ import zipfile
 ROOT = Path(__file__).resolve().parents[1]
 SOURCE = ROOT / "firmware" / "Keyring"
 DESTINATION = ROOT / "downloads" / "Keyring-Arduino.zip"
-FILES = ("Keyring.ino", "character_renderer.h", "keyring_core.h", "web_assets.h")
+FILES = ("Keyring.ino", "character_renderer.h", "keyring_core.h", "program_core.h", "program_codec.h", "web_assets.h")
 TIMESTAMP = (1980, 1, 1, 0, 0, 0)
 
 
@@ -31,7 +31,7 @@ def verify_archive(content):
             raise RuntimeError("ZIP CRC verification failed")
         expected = [f"Keyring/{filename}" for filename in FILES]
         if archive.namelist() != expected:
-            raise RuntimeError("Archive must contain exactly the sketch and its three headers")
+            raise RuntimeError("Archive must contain exactly the sketch and all required headers")
         for filename in FILES:
             entry = archive.getinfo(f"Keyring/{filename}")
             if entry.date_time != TIMESTAMP or (entry.external_attr >> 16) & 0o777 != 0o644:

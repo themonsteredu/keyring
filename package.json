@@ -9,9 +9,11 @@
     "build": "bash tools/build.sh",
     "dev": "python3 tools/dev_server.py --port 8000",
     "dev:mock": "python3 tools/dev_server.py --port 8000 --mock",
-    "generate": "python3 tools/generate_sprites.py && python3 tools/embed_web.py"
+    "generate": "node tools/vendor_blockly.mjs && python3 tools/generate_sprites.py && python3 tools/embed_web.py",
+    "package:arduino": "python3 tools/package_arduino.py"
   },
   "devDependencies": {
-    "@playwright/test": "1.64.1"
+    "@playwright/test": "1.64.1",
+    "blockly": "13.4.0"
   }
 }

@@ -57,10 +57,13 @@ int main() {
       keyring::renderCharacter(open, character, emotion, 0);
       keyring::renderCharacter(closed, character, emotion, 14);
       assert(hash(open) != hash(closed));
-      // Closed eyes cover all nine pixels on both lids at the known eye row.
+      // Dark lids cut into the white plush face across all nine eye pixels.
       const int eyeY = character == 3 ? 26 : 34;
-      for (int x = 49; x <= 57; ++x) assert(closed.get(x, eyeY));
-      for (int x = 71; x <= 79; ++x) assert(closed.get(x, eyeY));
+      for (int x = 49; x <= 57; ++x) assert(!closed.get(x, eyeY));
+      for (int x = 71; x <= 79; ++x) assert(!closed.get(x, eyeY));
+      // The lids must remain within a lit face, not disappear into background.
+      assert(closed.get(53, eyeY - 3) && closed.get(75, eyeY - 3));
+      assert(closed.get(53, eyeY + 4) && closed.get(75, eyeY + 4));
     }
   }
   assert(identities.size() == 30);  // Characters and expressions stay distinct.

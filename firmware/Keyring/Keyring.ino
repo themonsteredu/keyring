@@ -15,12 +15,14 @@
 
 #include "keyring_core.h"
 #include "character_renderer.h"
+#include "program_core.h"
+#include "program_codec.h"
 #include "web_assets.h"
 
 static constexpr uint8_t kSdaPin = 4;
 static constexpr uint8_t kSclPin = 5;
 static constexpr uint32_t kI2cHz = 400000;
-static constexpr size_t kMaxBody = 10240;
+static constexpr size_t kMaxBody = 16384;
 static constexpr uint32_t kFrameMs = 160;
 static constexpr char kApPassword[] = "keyring123";
 static constexpr char kNvsNamespace[] = "keyring-s1";
@@ -32,12 +34,15 @@ Preferences storage;
 keyring_core::Settings settings;
 keyring_core::Weather weather;
 keyring_core::Clock deviceClock;
+keyring_program::Program savedProgram;
+keyring_program::Machine programMachine;
 keyring::FrameBuffer characterFrame;
 uint8_t lastDisplay[1024];
 bool displaySent = false;
 bool oledReady = false;
 bool storageReady = false;
 bool haveWeather = false;
+bool haveProgram = false;
 String accessPointName;
 uint64_t lastFrameMs = 0;
 
@@ -91,7 +96,7 @@ static bool readJson(JsonDocument& document) {
     sendError(413, "body_too_large");
     return false;
   }
-  const DeserializationError error = deserializeJson(document, server.arg("plain"), DeserializationOption::NestingLimit(7));
+  const DeserializationError error = deserializeJson(document, server.arg("plain"), DeserializationOption::NestingLimit(16));
   if (error || !document.is<JsonObject>()) {
     sendError(400, "invalid_json");
     return false;
@@ -112,14 +117,14 @@ static bool parsePoint(JsonVariantConst input, keyring_core::ForecastPoint& outp
 
 static bool parseWeather(JsonVariantConst input, keyring_core::Weather& output) {
   if (!input.is<JsonObjectConst>() || !input["schema"].is<int>() ||
-      input["schema"].as<int>() != keyring_core::kSchema || !input["source"].is<const char*>() ||
+      input["schema"].as<int>() != keyring_core::kSchema || !keyring_program::plainString(input["source"]) ||
       !input["fetchedAt"].is<uint32_t>() || !input["location"].is<JsonObjectConst>()) return false;
   const char* source = input["source"].as<const char*>();
   if (strcmp(source, "open-meteo") == 0) output.source = keyring_core::WeatherSource::OpenMeteo;
   else if (strcmp(source, "sample") == 0) output.source = keyring_core::WeatherSource::Sample;
   else return false;
   const JsonVariantConst location = input["location"];
-  if (!location["name"].is<const char*>() || !location["latitude"].is<float>() || !location["longitude"].is<float>()) return false;
+  if (!keyring_program::plainString(location["name"]) || !location["latitude"].is<float>() || !location["longitude"].is<float>()) return false;
   const char* locationName = location["name"].as<const char*>();
   const size_t length = strlen(locationName);
   if (!length || length > keyring_core::kLocationBytes) return false;
@@ -154,17 +159,6 @@ static void appendWeather(JsonObject object, const keyring_core::Weather& value)
   for (size_t i = 0; i < keyring_core::kHours; ++i) appendPoint(hourly.add<JsonObject>(), value.hourly[i]);
 }
 
-static String settingsJson(const keyring_core::Settings& value) {
-  JsonDocument document;
-  document["schema"] = keyring_core::kSchema;
-  document["character"] = keyring_core::kCharacters[value.character];
-  document["emotion"] = keyring_core::kEmotions[value.emotion];
-  document["view"] = keyring_core::kViews[value.view];
-  String result;
-  serializeJson(document, result);
-  return result;
-}
-
 static bool persistString(const char* key, const String& value) {
   if (!storageReady) return false;
   // Do not wear flash out when students press Apply repeatedly without changes.
@@ -172,21 +166,53 @@ static bool persistString(const char* key, const String& value) {
   return storage.putString(key, value) == value.length();
 }
 
+static bool persistConfiguration(const keyring_core::Settings& scene, const keyring_program::Program* program) {
+  JsonDocument document;
+  if (!keyring_program::appendConfiguration(document.to<JsonObject>(), scene, program)) return false;
+  String canonical;
+  serializeJson(document, canonical);
+  // A storage success acknowledgement is sent only after checking readback.
+  return canonical.length() <= kMaxBody && persistString("config-v2", canonical) && storage.getString("config-v2", "") == canonical;
+}
+
+static const keyring_core::Settings& renderedSettings() {
+  return programMachine.hasOutput() ? programMachine.rendered() : settings;
+}
+
 static void restoreData() {
   storageReady = storage.begin(kNvsNamespace, false);
   if (!storageReady) { Serial.println("NVS open failed: read-only UI until storage is available"); return; }
   JsonDocument document;
-  const String savedSettings = storage.getString("settings", "");
-  if (savedSettings.length() && savedSettings.length() < 512 && !deserializeJson(document, savedSettings) &&
-      document["schema"].is<int>() && document["schema"].as<int>() == keyring_core::kSchema) {
-    keyring_core::Settings restored;
-    if (keyring_core::parseSettings(document["character"].as<const char*>(), document["emotion"].as<const char*>(),
-                                    document["view"].as<const char*>(), restored)) settings = restored;
+  bool haveConfiguration = false;
+  const String cachedConfiguration = storage.getString("config-v2", "");
+  if (cachedConfiguration.length()) {
+    const char* error = "invalid_configuration_json";
+    if (cachedConfiguration.length() <= kMaxBody &&
+        !deserializeJson(document, cachedConfiguration, DeserializationOption::NestingLimit(16)) &&
+        keyring_program::decodeConfiguration(document.as<JsonVariantConst>(), settings, savedProgram, haveProgram, error)) {
+      haveConfiguration = true;
+    } else Serial.printf("Ignoring invalid cached configuration/program: %s\n", error ? error : "invalid_configuration");
+  }
+  // Read the original firmware's manual scene without rewriting flash on boot.
+  if (!haveConfiguration) {
+    document.clear();
+    const String savedSettings = storage.getString("settings", "");
+    if (savedSettings.length() && savedSettings.length() < 512 && !deserializeJson(document, savedSettings) &&
+        document["schema"].is<int>() && document["schema"].as<int>() == keyring_core::kSchema) {
+      keyring_core::Settings restored;
+      if (keyring_program::plainString(document["character"]) && keyring_program::plainString(document["emotion"]) &&
+          keyring_program::plainString(document["view"]) && keyring_core::parseSettings(document["character"].as<const char*>(), document["emotion"].as<const char*>(),
+                                      document["view"].as<const char*>(), restored)) settings = restored;
+    }
   }
   document.clear();
   const String savedWeather = storage.getString("weather", "");
   if (savedWeather.length() && savedWeather.length() <= kMaxBody && !deserializeJson(document, savedWeather)) {
     haveWeather = parseWeather(document.as<JsonVariantConst>(), weather);
+  }
+  if (haveProgram) {
+    programMachine.start(savedProgram, settings, uptimeMs());
+    Serial.printf("Loaded block program: %u nodes, enabled=%s\n", savedProgram.count, savedProgram.enabled ? "true" : "false");
   }
   // deviceClock is intentionally NOT restored. The C3 has no battery-backed RTC.
   Serial.printf("Loaded character=%s emotion=%s view=%s weather=%s; clock is unknown until phone synchronization\n",
@@ -204,7 +230,16 @@ static void stateRequest() {
   document["ssid"] = accessPointName;
   document["oled"] = oledReady;
   document["storage"] = storageReady;
-  document["firmware"] = "1.0.0";
+  document["firmware"] = "2.0.0";
+  document["capabilities"]["blockPrograms"] = true;
+  document["programRunning"] = programMachine.running();
+  if (haveProgram) keyring_program::appendProgram(document["program"].to<JsonObject>(), savedProgram);
+  else document["program"] = nullptr;
+  const keyring_core::Settings& rendered = renderedSettings();
+  JsonObject output = document["rendered"].to<JsonObject>();
+  output["character"] = keyring_core::kCharacters[rendered.character];
+  output["emotion"] = keyring_core::kEmotions[rendered.emotion];
+  output["view"] = keyring_core::kViews[rendered.view];
   JsonObject clock = document["clock"].to<JsonObject>();
   clock["trusted"] = deviceClock.trusted(nowMs);
   if (deviceClock.trusted(nowMs)) clock["now"] = deviceClock.now(nowMs);
@@ -219,12 +254,18 @@ static void settingsRequest() {
   JsonDocument document;
   if (!readJson(document)) return;
   keyring_core::Settings next;
-  if (!document["character"].is<const char*>() || !document["emotion"].is<const char*>() || !document["view"].is<const char*>() ||
+  if (!keyring_program::plainString(document["character"]) || !keyring_program::plainString(document["emotion"]) || !keyring_program::plainString(document["view"]) ||
       !keyring_core::parseSettings(document["character"].as<const char*>(), document["emotion"].as<const char*>(),
                                   document["view"].as<const char*>(), next)) {
     sendError(422, "invalid_settings"); return;
   }
-  if (!persistString("settings", settingsJson(next))) { sendError(503, "storage_write_failed"); return; }
+  // Disabling is itself persisted, so a reboot cannot unexpectedly undo a
+  // student's explicit manual Apply action by restarting the old program.
+  keyring_program::Program disabled = savedProgram;
+  disabled.enabled = false;
+  if (!persistConfiguration(next, haveProgram ? &disabled : nullptr)) { sendError(503, "storage_write_failed"); return; }
+  programMachine.stop();
+  if (haveProgram) savedProgram = disabled;
   settings = next;
   sendSaved();
 }
@@ -266,6 +307,44 @@ static void resetRequest() {
   settings = keyring_core::Settings();
   weather = keyring_core::Weather();
   haveWeather = false;
+  programMachine.stop();
+  savedProgram = keyring_program::Program();
+  haveProgram = false;
+  sendSaved();
+}
+
+static void programRequest() {
+  JsonDocument document;
+  if (!readJson(document)) return;
+  keyring_program::Program next;
+  const char* error = nullptr;
+  if (!keyring_program::decodeProgram(document.as<JsonVariantConst>(), next, error)) {
+    sendError(422, error ? error : "invalid_program"); return;
+  }
+  if (!persistConfiguration(settings, &next)) { sendError(503, "storage_write_failed"); return; }
+  programMachine.stop();
+  savedProgram = next;
+  haveProgram = true;
+  if (!programMachine.start(savedProgram, settings, uptimeMs())) { sendError(500, "program_start_failed"); return; }
+  sendSaved();
+}
+
+static void programControlRequest() {
+  JsonDocument document;
+  if (!readJson(document)) return;
+  static const char* const keys[] = {"action"};
+  if (!keyring_program::exactKeys(document.as<JsonObjectConst>(), keys) || !keyring_program::plainString(document["action"])) {
+    sendError(422, "invalid_program_action"); return;
+  }
+  const char* action = document["action"].as<const char*>();
+  if (strcmp(action, "start") != 0 && strcmp(action, "stop") != 0) { sendError(422, "invalid_program_action"); return; }
+  if (!haveProgram) { sendError(409, "no_saved_program"); return; }
+  keyring_program::Program next = savedProgram;
+  next.enabled = strcmp(action, "start") == 0;
+  if (!persistConfiguration(settings, &next)) { sendError(503, "storage_write_failed"); return; }
+  programMachine.stop();
+  savedProgram = next;
+  if (next.enabled && !programMachine.start(savedProgram, settings, uptimeMs())) { sendError(500, "program_start_failed"); return; }
   sendSaved();
 }
 
@@ -277,7 +356,7 @@ static void assetRequest() {
       server.sendHeader("Content-Encoding", "gzip");
       server.sendHeader("Cache-Control", "no-cache");
       server.sendHeader("X-Content-Type-Options", "nosniff");
-      server.sendHeader("Content-Security-Policy", "default-src 'self'; connect-src 'self' https://api.open-meteo.com https://geocoding-api.open-meteo.com; img-src 'self' data:; style-src 'self'; script-src 'self'; font-src 'self'; object-src 'none'; base-uri 'none'; frame-ancestors 'none'");
+      server.sendHeader("Content-Security-Policy", "default-src 'self'; connect-src 'self' https://api.open-meteo.com https://geocoding-api.open-meteo.com; img-src 'self' data:; style-src 'self' 'unsafe-inline'; script-src 'self'; font-src 'self'; object-src 'none'; base-uri 'none'; frame-ancestors 'none'");
       server.send_P(200, asset.type, reinterpret_cast<const char*>(asset.data), asset.size);
       return;
     }
@@ -378,16 +457,17 @@ static void weatherFrame(uint64_t nowMs, uint8_t page) {
 static void updateDisplay(uint64_t nowMs) {
   if (!oledReady || (displaySent && nowMs - lastFrameMs < kFrameMs)) return;
   lastFrameMs = nowMs;
-  bool showWeather = settings.view == 1;
+  const keyring_core::Settings& rendered = renderedSettings();
+  bool showWeather = rendered.view == 1;
   uint8_t page = (nowMs / 5000) % 5;
-  if (settings.view == 2) {
+  if (rendered.view == 2) {
     const uint32_t cycle = nowMs % 40000;
     showWeather = cycle >= 15000;
     page = showWeather ? static_cast<uint8_t>((cycle - 15000) / 5000) : 0;
   }
   if (showWeather) weatherFrame(nowMs, page);
   else {
-    keyring::renderCharacter(characterFrame, settings.character, settings.emotion, (nowMs / kFrameMs) % 32);
+    keyring::renderCharacter(characterFrame, rendered.character, rendered.emotion, (nowMs / kFrameMs) % 32);
     memcpy(display.getBuffer(), characterFrame.data, sizeof(lastDisplay));
   }
   if (!displaySent || memcmp(lastDisplay, display.getBuffer(), sizeof(lastDisplay)) != 0) {
@@ -428,6 +508,8 @@ void setup() {
   server.on("/api/time", HTTP_POST, timeRequest);
   server.on("/api/weather", HTTP_POST, weatherRequest);
   server.on("/api/reset", HTTP_POST, resetRequest);
+  server.on("/api/program", HTTP_POST, programRequest);
+  server.on("/api/program/control", HTTP_POST, programControlRequest);
   server.onNotFound([]() {
     if (server.method() != HTTP_GET) { sendError(405, "method_not_allowed"); return; }
     assetRequest();
@@ -440,6 +522,8 @@ void setup() {
 void loop() {
   dns.processNextRequest();
   server.handleClient();
-  updateDisplay(uptimeMs());
+  const uint64_t nowMs = uptimeMs();
+  programMachine.tick(nowMs, haveWeather ? &weather : nullptr);
+  updateDisplay(nowMs);
   delay(1);  // Let the ESP32 Wi-Fi stack and idle task run.
 }

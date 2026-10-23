@@ -15,15 +15,14 @@ jobs:
       - uses: actions/setup-python@v5
         with:
           python-version: '3.12'
-      - run: npm ci
-      - run: bash tools/test.sh
-      - run: npx playwright install --with-deps chromium
-      - run: npm run test:e2e
       - uses: actions/cache@v4
         with:
           path: ../.tooling
           key: esp32c3-linux-${{ hashFiles('tools/dependencies.json') }}
       - run: bash tools/setup.sh
+      - run: bash tools/test.sh
+      - run: npx playwright install --with-deps chromium
+      - run: npm run test:e2e
       - run: bash tools/build.sh
       - uses: actions/upload-artifact@v4
         with:

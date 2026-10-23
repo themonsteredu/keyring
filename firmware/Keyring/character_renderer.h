@@ -96,16 +96,17 @@ struct FrameBuffer {
 
 namespace character_detail {
 
-inline void boldLine(FrameBuffer& b, int x0, int y0, int x1, int y1) {
-  b.line(x0, y0, x1, y1);
-  b.line(x0, y0 + 1, x1, y1 + 1);
+inline void boldLine(FrameBuffer& b, int x0, int y0, int x1, int y1,
+                     bool on = true) {
+  b.line(x0, y0, x1, y1, on);
+  b.line(x0, y0 + 1, x1, y1 + 1, on);
 }
 
-inline void heart(FrameBuffer& b, int x, int y, int scale) {
-  b.ellipse(x - 2 * scale, y, 2 * scale, 2 * scale);
-  b.ellipse(x + 2 * scale, y, 2 * scale, 2 * scale);
+inline void heart(FrameBuffer& b, int x, int y, int scale, bool on = true) {
+  b.ellipse(x - 2 * scale, y, 2 * scale, 2 * scale, on);
+  b.ellipse(x + 2 * scale, y, 2 * scale, 2 * scale, on);
   b.triangle(x - 4 * scale, y, x + 4 * scale, y,
-             x, y + 5 * scale);
+             x, y + 5 * scale, on);
 }
 
 inline void sparkle(FrameBuffer& b, int x, int y, int size) {
@@ -115,12 +116,12 @@ inline void sparkle(FrameBuffer& b, int x, int y, int size) {
   b.pixel(x + 1, y + 1);
 }
 
-inline void smile(FrameBuffer& b, int x, int y, int size) {
-  // A thick U; the open upper half keeps the mouth legible on real OLEDs.
+inline void smile(FrameBuffer& b, int x, int y, int size, bool on = true) {
+  // Rounded, two-pixel smile; the top stays open even on the physical OLED.
   for (int i = -size; i <= size; ++i) {
     const int dy = size > 0 ? (size * size - i * i) / (size + 1) : 0;
-    b.pixel(x + i, y + dy);
-    b.pixel(x + i, y + dy + 1);
+    b.pixel(x + i, y + dy, on);
+    b.pixel(x + i, y + dy + 1, on);
   }
 }
 
@@ -134,72 +135,101 @@ inline void eyes(FrameBuffer& b, int cx, int cy, uint8_t emotion,
                  bool blinking) {
   const int left = cx - 11;
   const int right = cx + 11;
+  // White plush silhouettes carry dark eyes. Never paint a separate blank
+  // display frame: these cuts are made only in the completed RAM framebuffer.
   if (blinking) {
-    boldLine(b, left - 4, cy + 1, left + 4, cy + 1);
-    boldLine(b, right - 4, cy + 1, right + 4, cy + 1);
+    boldLine(b, left - 4, cy + 1, left + 4, cy + 1, false);
+    boldLine(b, right - 4, cy + 1, right + 4, cy + 1, false);
     return;
   }
   if (emotion == 0) {
     for (int x = left; x <= right; x += 22) {
-      boldLine(b, x - 4, cy + 1, x, cy - 3);
-      boldLine(b, x, cy - 3, x + 4, cy + 1);
+      b.ellipse(x, cy, 3, 5, false);
+      b.rectangle(x - 1, cy - 3, 2, 2);
     }
   } else if (emotion == 1) {
-    b.ellipse(left, cy, 3, 6);
-    b.ellipse(right, cy, 3, 6);
-    b.pixel(left - 1, cy - 3, false);
-    b.pixel(right - 1, cy - 3, false);
+    for (int x = left; x <= right; x += 22) {
+      b.ellipse(x, cy - 1, 4, 7, false);
+      b.rectangle(x - 1, cy - 5, 2, 3);
+      b.pixel(x + 2, cy + 2);
+    }
   } else if (emotion == 2) {
-    boldLine(b, left - 4, cy, left + 4, cy + 1);
-    boldLine(b, right - 4, cy + 1, right + 4, cy);
-    b.pixel(left - 4, cy + 2);
-    b.pixel(right + 4, cy + 2);
+    boldLine(b, left - 5, cy, left + 4, cy + 1, false);
+    boldLine(b, right - 4, cy + 1, right + 5, cy, false);
+    b.pixel(left - 5, cy + 2, false);
+    b.pixel(right + 5, cy + 2, false);
   } else if (emotion == 3) {
-    b.ellipse(left, cy + 1, 2, 4);
-    b.ellipse(right, cy + 1, 2, 4);
-    boldLine(b, left - 4, cy - 6, left + 3, cy - 9);
-    boldLine(b, right - 3, cy - 9, right + 4, cy - 6);
+    for (int x = left; x <= right; x += 22) {
+      b.ellipse(x, cy + 1, 3, 5, false);
+      b.rectangle(x - 1, cy - 1, 2, 2);
+    }
+    boldLine(b, left - 5, cy - 7, left + 3, cy - 10, false);
+    boldLine(b, right - 3, cy - 10, right + 5, cy - 7, false);
   } else if (emotion == 4) {
-    b.ellipse(left, cy + 1, 2, 3);
-    b.ellipse(right, cy + 1, 2, 3);
-    boldLine(b, left - 5, cy - 7, left + 4, cy - 3);
-    boldLine(b, right - 4, cy - 3, right + 5, cy - 7);
+    b.triangle(left - 5, cy - 2, left + 4, cy + 1,
+               left - 3, cy + 5, false);
+    b.triangle(right - 4, cy + 1, right + 5, cy - 2,
+               right + 3, cy + 5, false);
+    boldLine(b, left - 6, cy - 7, left + 4, cy - 3, false);
+    boldLine(b, right - 4, cy - 3, right + 6, cy - 7, false);
   } else {
-    heart(b, left, cy - 2, 1);
-    heart(b, right, cy - 2, 1);
+    heart(b, left, cy - 2, 1, false);
+    heart(b, right, cy - 2, 1, false);
   }
 }
 
 inline void face(FrameBuffer& b, int cx, int cy, uint8_t emotion,
                  uint8_t phase, uint8_t character) {
   eyes(b, cx, cy - 2, emotion, phase == 14 || phase == 15);
-  if (emotion == 0 || emotion == 5) smile(b, cx, cy + 8, 6);
+  if (emotion == 0 || emotion == 5) smile(b, cx, cy + 8, 7, false);
   else if (emotion == 1) {
-    b.outline(cx, cy + 11, 5, 5, 2);
-    b.rectangle(cx - 2, cy + 13, 5, 1);
-  } else if (emotion == 2) b.outline(cx, cy + 10, 3, 2, 1);
+    b.ellipse(cx, cy + 11, 6, 6, false);
+    b.rectangle(cx - 2, cy + 14, 5, 2);
+  } else if (emotion == 2) {
+    b.ellipse(cx, cy + 10, 3, 2, false);
+    if (phase / 8 % 2) b.pixel(cx, cy + 13, false);
+  }
   else if (emotion == 3) {
-    boldLine(b, cx - 5, cy + 12, cx, cy + 9);
-    boldLine(b, cx, cy + 9, cx + 5, cy + 12);
-    const int tearY = cy + 7 + static_cast<int>((phase / 4) % 3);
-    b.ellipse(cx + 16, tearY, 1, 2);
+    boldLine(b, cx - 5, cy + 12, cx, cy + 9, false);
+    boldLine(b, cx, cy + 9, cx + 5, cy + 12, false);
+    const int tearY = cy + 5 + static_cast<int>((phase / 4) % 3);
+    b.triangle(cx + 16, tearY - 3, cx + 14, tearY + 1,
+               cx + 18, tearY + 1, false);
+    b.ellipse(cx + 16, tearY + 2, 2, 2, false);
+    b.pixel(cx + 16, tearY + 2);
   } else {
-    boldLine(b, cx - 5, cy + 12, cx, cy + 10);
-    boldLine(b, cx, cy + 10, cx + 5, cy + 12);
+    boldLine(b, cx - 5, cy + 12, cx, cy + 10, false);
+    boldLine(b, cx, cy + 10, cx + 5, cy + 12, false);
   }
   if (emotion == 0 || emotion == 1 || emotion == 5) {
-    b.line(cx - 19, cy + 5, cx - 16, cy + 6);
-    b.line(cx + 16, cy + 6, cx + 19, cy + 5);
+    b.line(cx - 20, cy + 5, cx - 18, cy + 7, false);
+    b.line(cx - 17, cy + 5, cx - 15, cy + 7, false);
+    b.line(cx + 15, cy + 7, cx + 17, cy + 5, false);
+    b.line(cx + 18, cy + 7, cx + 20, cy + 5, false);
   }
   if (character == 1) {
-    // Cat nose and short whiskers, outside the expression's mouth.
-    b.triangle(cx - 2, cy + 4, cx + 2, cy + 4, cx, cy + 6);
-    b.line(cx - 25, cy + 3, cx - 18, cy + 4);
-    b.line(cx - 26, cy + 8, cx - 19, cy + 7);
-    b.line(cx + 18, cy + 4, cx + 25, cy + 3);
-    b.line(cx + 19, cy + 7, cx + 26, cy + 8);
+    b.triangle(cx - 2, cy + 3, cx + 2, cy + 3, cx, cy + 5, false);
+    // Dark inner whiskers continue as bright tips outside the white face.
+    b.line(cx - 26, cy + 3, cx - 19, cy + 4, false);
+    b.line(cx - 26, cy + 8, cx - 20, cy + 7, false);
+    b.line(cx + 19, cy + 4, cx + 26, cy + 3, false);
+    b.line(cx + 20, cy + 7, cx + 26, cy + 8, false);
+    boldLine(b, cx - 34, cy + 1, cx - 29, cy + 2);
+    boldLine(b, cx + 29, cy + 2, cx + 34, cy + 1);
+    b.line(cx - 34, cy + 8, cx - 29, cy + 7);
+    b.line(cx + 29, cy + 7, cx + 34, cy + 8);
   } else if (character == 2) {
-    b.ellipse(cx, cy + 4, 3, 2);
+    b.ellipse(cx, cy + 3, 4, 2, false);
+    b.pixel(cx - 1, cy + 2);
+  } else if (character == 3) {
+    b.pixel(cx - 3, cy + 4, false);
+    b.pixel(cx + 3, cy + 4, false);
+  } else if (character == 0) {
+    b.triangle(cx - 2, cy + 3, cx + 2, cy + 3, cx, cy + 5, false);
+  } else if (character == 4 && emotion == 1) {
+    // Two tiny friendly teeth make the monster's open smile its own.
+    b.triangle(cx - 4, cy + 7, cx - 1, cy + 7, cx - 3, cy + 10);
+    b.triangle(cx + 1, cy + 7, cx + 4, cy + 7, cx + 3, cy + 10);
   }
 }
 
@@ -222,64 +252,78 @@ inline void renderCharacter(FrameBuffer& b, uint8_t character, uint8_t emotion,
 
   if (character == 0) {
     const int twitch = phase >= 24 && phase < 27 ? 2 : 0;
-    b.outline(cx - 15 - twitch, 15 + bob, 8, 14, 2);
-    b.outline(cx + 15 + twitch, 15 + bob, 8, 14, 2);
-    b.rectangle(cx - 17 - twitch, 9 + bob, 4, 12);
-    b.rectangle(cx + 13 + twitch, 9 + bob, 4, 12);
-    b.outline(cx, 38 + bob, 29, 23, 2);
+    b.ellipse(cx - 14 - twitch, 14 + bob, 7, 13);
+    b.ellipse(cx + 14 + twitch, 14 + bob, 7, 13);
+    b.ellipse(cx - 14 - twitch, 13 + bob, 3, 8, false);
+    b.ellipse(cx + 14 + twitch, 13 + bob, 3, 8, false);
+    b.ellipse(cx - 14, 59 + bob, 7, 3);
+    b.ellipse(cx + 14, 59 + bob, 7, 3);
+    b.ellipse(cx, 39 + bob, 28, 21);
+    // Small front paws give the bunny a plush shape instead of a floating head.
+    b.line(cx - 17, 54 + bob, cx - 14, 56 + bob, false);
+    b.line(cx + 14, 56 + bob, cx + 17, 54 + bob, false);
+  } else if (character == 1) {
+    const int flick = static_cast<int>(phase / 8 % 2);
+    boldLine(b, cx + 25, 56 + bob, cx + 37, 56 + bob);
+    boldLine(b, cx + 37, 56 + bob, cx + 43, 50 + bob);
+    boldLine(b, cx + 43, 50 + bob, cx + 43, 40 + bob - flick);
+    boldLine(b, cx + 43, 40 + bob - flick, cx + 39, 36 + bob - flick);
+    boldLine(b, cx + 39, 36 + bob - flick, cx + 35, 38 + bob - flick);
+    b.triangle(cx - 28, 31 + bob, cx - 24, 5 + bob, cx - 7, 24 + bob);
+    b.triangle(cx + 7, 24 + bob, cx + 24, 5 + bob, cx + 28, 31 + bob);
+    b.triangle(cx - 24, 24 + bob, cx - 22, 12 + bob, cx - 13, 24 + bob, false);
+    b.triangle(cx + 13, 24 + bob, cx + 22, 12 + bob, cx + 24, 24 + bob, false);
     b.ellipse(cx - 15, 59 + bob, 7, 3);
     b.ellipse(cx + 15, 59 + bob, 7, 3);
-  } else if (character == 1) {
-    b.triangle(cx - 28, 31 + bob, cx - 25, 6 + bob,
-               cx - 7, 23 + bob);
-    b.triangle(cx + 7, 23 + bob, cx + 25, 6 + bob,
-               cx + 28, 31 + bob);
-    b.triangle(cx - 24, 24 + bob, cx - 23, 12 + bob,
-               cx - 13, 23 + bob, false);
-    b.triangle(cx + 13, 23 + bob, cx + 23, 12 + bob,
-               cx + 24, 24 + bob, false);
-    b.outline(cx, 37 + bob, 29, 23, 2);
-    // The tail flicks to the right of the head, never behind the face.
-    b.outline(cx + 37, 49 + bob - static_cast<int>(phase / 8 % 2), 6, 8, 2);
-    b.rectangle(cx + 30, 45 + bob, 5, 12, false);
-    b.line(cx + 29, 56 + bob, cx + 37, 56 + bob);
+    b.ellipse(cx, 39 + bob, 29, 21);
+    b.line(cx - 17, 55 + bob, cx - 15, 57 + bob, false);
+    b.line(cx + 15, 57 + bob, cx + 17, 55 + bob, false);
   } else if (character == 2) {
-    b.outline(cx - 23, 16 + bob, 11, 11, 2);
-    b.outline(cx + 23, 16 + bob, 11, 11, 2);
-    b.ellipse(cx - 23, 16 + bob, 4, 4);
-    b.ellipse(cx + 23, 16 + bob, 4, 4);
-    b.outline(cx, 36 + bob, 31, 25, 2);
-    b.ellipse(cx - 21, 58 + bob, 7, 4);
-    b.ellipse(cx + 21, 58 + bob, 7, 4);
+    b.ellipse(cx - 22, 15 + bob, 9, 9);
+    b.ellipse(cx + 22, 15 + bob, 9, 9);
+    b.ellipse(cx - 22, 15 + bob, 4, 4, false);
+    b.ellipse(cx + 22, 15 + bob, 4, 4, false);
+    b.ellipse(cx - 18, 59 + bob, 7, 3);
+    b.ellipse(cx + 18, 59 + bob, 7, 3);
     if (phase >= 24 && phase < 28) {
-      b.outline(cx - 37, 39 + bob, 5, 8, 2);
-      b.line(cx - 35, 46 + bob, cx - 29, 49 + bob);
+      b.ellipse(cx - 34, 35 + bob, 5, 7);
+      b.line(cx - 34, 32 + bob, cx - 34, 35 + bob, false);
     }
+    b.ellipse(cx, 38 + bob, 28, 21);
+    b.line(cx - 21, 54 + bob, cx - 18, 57 + bob, false);
+    b.line(cx + 18, 57 + bob, cx + 21, 54 + bob, false);
   } else if (character == 3) {
-    b.outline(cx, 45 + bob, 38, 17, 2);
-    b.line(cx - 25, 48 + bob, cx - 16, 59 + bob);
-    b.line(cx + 25, 48 + bob, cx + 16, 59 + bob);
-    b.line(cx - 16, 59 + bob, cx + 16, 59 + bob);
+    b.outline(cx, 48 + bob, 37, 14, 2);
+    b.line(cx - 17, 50 + bob, cx - 28, 56 + bob);
+    b.line(cx + 17, 50 + bob, cx + 28, 56 + bob);
+    b.line(cx - 11, 53 + bob, cx + 11, 53 + bob);
+    b.line(cx - 11, 53 + bob, cx - 16, 58 + bob);
+    b.line(cx + 11, 53 + bob, cx + 16, 58 + bob);
+    b.line(cx - 16, 58 + bob, cx - 11, 61 + bob);
+    b.line(cx + 16, 58 + bob, cx + 11, 61 + bob);
     const int step = phase >= 16 && phase < 24 ? 1 : 0;
-    b.ellipse(cx - 29, 58 + bob - step, 8, 4);
-    b.ellipse(cx + 29, 58 + bob + step, 8, 4);
-    b.ellipse(cx - 31, 35 + bob, 9, 4);
-    b.ellipse(cx + 31, 35 + bob, 9, 4);
-    b.ellipse(cx, 29 + bob, 27, 24, false);
-    b.outline(cx, 29 + bob, 27, 24, 2);
+    b.ellipse(cx - 28, 58 + bob - step, 7, 4);
+    b.ellipse(cx + 28, 58 + bob + step, 7, 4);
+    b.ellipse(cx - 30, 35 + bob, 8, 4);
+    b.ellipse(cx + 30, 35 + bob, 8, 4);
+    b.ellipse(cx, 30 + bob, 27, 23, false);
+    b.ellipse(cx, 30 + bob, 25, 21);
     cy = 27 + bob;
   } else {
     const int twitch = phase >= 24 && phase < 28 ? 2 : 0;
-    b.triangle(cx - 25, 25 + bob, cx - 28 - twitch, 5 + bob,
-               cx - 9, 16 + bob);
-    b.triangle(cx + 9, 16 + bob, cx + 28 + twitch, 5 + bob,
-               cx + 25, 25 + bob);
-    b.outline(cx, 36 + bob, 31, 25, 2);
-    b.outline(cx - 36, 41 + bob, 5, 9, 2);
-    b.outline(cx + 36, 41 + bob, 5, 9, 2);
-    b.ellipse(cx - 15, 60 + bob, 8, 3);
-    b.ellipse(cx + 15, 60 + bob, 8, 3);
-    b.rectangle(cx - 1, 12 + bob, 3, 5);
+    b.triangle(cx - 24, 26 + bob, cx - 23 - twitch, 5 + bob, cx - 8, 18 + bob);
+    b.triangle(cx + 8, 18 + bob, cx + 23 + twitch, 5 + bob, cx + 24, 26 + bob);
+    b.line(cx - 24 - twitch, 11 + bob, cx - 17, 12 + bob, false);
+    b.line(cx + 17, 12 + bob, cx + 24 + twitch, 11 + bob, false);
+    const int wave = phase >= 24 && phase < 28 ? -5 : 0;
+    b.ellipse(cx - 32, 42 + bob + wave, 4, 7);
+    b.ellipse(cx + 32, 42 + bob, 4, 7);
+    b.ellipse(cx - 15, 59 + bob, 7, 3);
+    b.ellipse(cx + 15, 59 + bob, 7, 3);
+    b.ellipse(cx, 38 + bob, 28, 21);
+    b.triangle(cx - 3, 20 + bob, cx + 3, 20 + bob, cx, 24 + bob, false);
+    b.line(cx - 33, 40 + bob + wave, cx - 31, 42 + bob + wave, false);
+    b.line(cx + 31, 42 + bob, cx + 33, 40 + bob, false);
   }
 
   face(b, cx, cy, emotion, phase, character);
@@ -291,12 +335,15 @@ inline void renderCharacter(FrameBuffer& b, uint8_t character, uint8_t emotion,
     sleepyZ(b, 99, 22 - static_cast<int>(phase / 8), 5);
     if (phase >= 16) sleepyZ(b, 109, 10 - static_cast<int>(phase / 16), 7);
   } else if (emotion == 4) {
-    boldLine(b, 105, 22, 109, 26);
-    boldLine(b, 109, 22, 105, 26);
-    if (phase / 4 % 2 == 0) {
-      b.line(101, 22, 103, 24);
-      b.line(111, 26, 113, 28);
-    }
+    const int pulse = phase / 4 % 2;
+    boldLine(b, 104 - pulse, 18, 104 - pulse, 21);
+    boldLine(b, 101 - pulse, 21, 104 - pulse, 21);
+    boldLine(b, 110 + pulse, 18, 110 + pulse, 21);
+    boldLine(b, 110 + pulse, 21, 113 + pulse, 21);
+    boldLine(b, 104 - pulse, 26, 104 - pulse, 29);
+    boldLine(b, 101 - pulse, 26, 104 - pulse, 26);
+    boldLine(b, 110 + pulse, 26, 113 + pulse, 26);
+    boldLine(b, 110 + pulse, 26, 110 + pulse, 29);
   } else if (emotion == 5) {
     const int lift = static_cast<int>((phase / 4) % 4);
     heart(b, 16, 26 - lift * 2, phase / 8 % 2 == 0 ? 1 : 2);

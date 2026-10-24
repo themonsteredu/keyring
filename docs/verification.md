@@ -31,7 +31,9 @@ OLED는 동물 몸·귀·얼굴 테두리를 그리지 않고 큰 눈과 작은 
 
 ## 온라인 배포
 
-운영 주소는 [keyring-swart.vercel.app](https://keyring-swart.vercel.app)이며, Vercel 팀 `themonsteredu`의 기존 `keyring` 프로젝트에 연결했습니다. 배포 입력 검사는 프레임워크 Other와 웹 파일·설정 23개를 확인했습니다. 설치·빌드를 생략하고 `web`을 정적으로 제공합니다. 새 버전의 실제 배포·운영 주소 검증 결과는 배포 완료 후 기록합니다.
+운영 주소는 [keyring-swart.vercel.app](https://keyring-swart.vercel.app)이며, Vercel 팀 `themonsteredu`의 기존 `keyring` 프로젝트에 연결했습니다. 배포 입력 검사는 프레임워크 Other와 웹 파일·설정 23개를 확인했습니다. 설치·빌드를 생략하고 `web`을 정적으로 제공합니다. 소스 커밋 `6f1691f64a78e3bc723e973de04d25a07a11c1f9`을 Vercel CLI로 운영 배포했습니다. 배포 상태는 **READY**, 운영 주소는 HTTP **200**이며 제목은 `키링 스튜디오 · 나의 우유팩 친구`입니다. 배포 식별자는 `dpl_FSaoUsU89WRksR22NVD3x33pt7hV`입니다.
+
+로그인 없이 받은 운영 HTML·CSS·앱·표정 atlas·날씨 모듈·한글 글리프·Blockly 파일과 글꼴 라이선스가 로컬 원본과 바이트 단위로 일치했습니다. 운영 `/api/state`는 404로 응답하며 모의 기기를 노출하지 않습니다. 운영 주소를 실제 Chromium에서 열어 눈 모양·사랑 표정 변경, Blockly 미리 실행·정지, 실제 서울 날씨 수신, Open-Meteo 출처·미리보기 배지와 24개 예보를 확인했습니다. JavaScript 예외는 0개였습니다. 실물 보드 검증과는 별도입니다.
 
 Arduino ZIP은 스케치·헤더 7개·글꼴 라이선스의 9파일을 포함합니다. 웹 배포와 보드 업로드는 별도입니다. 실제 보드에도 새 눈·입과 한글 날씨가 나오려면 새 ZIP의 펌웨어를 다시 업로드해야 합니다.
 

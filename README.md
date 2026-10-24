@@ -8,6 +8,12 @@ ESP32-C3 SuperMini와 128×64 OLED로 만드는 **우유팩 표정 키링**입�
 
 [모바일 화면 보기](docs/images/studio-mobile.png) · [블록코딩 사용법](docs/block-coding.md)
 
+## 우유팩 케이스 3D 출력
+
+[우유팩 STL 묶음 다운로드](https://raw.githubusercontent.com/themonsteredu/keyring/main/downloads/Milk-Carton-Keyring-STL.zip) · [출력·조립 안내](cad/milk-carton/README.md)
+
+본체·뒷뚜껑·OLED 시험판 STL과 편집용 STEP을 제공합니다. 조립 크기는 약 **42 × 75 × 34.4mm**입니다. 일반적인 모듈 치수를 기준으로 한 시제품이므로 OLED 시험판을 먼저 출력하세요. 케이스 고정용 **플라스틱용 2×8mm 나사 4개와 절연 폼테이프**가 별도로 필요합니다.
+
 ## 준비물과 고정 배선
 
 현재 필요한 부품은 ESP32-C3 SuperMini, 0.96인치 I2C SSD1306 OLED, 암암 점퍼선 4개, 데이터 전송이 되는 USB-C 케이블입니다. 전원은 USB를 사용합니다. 배터리·충전 회로·추가 버튼은 가정하지 않습니다.

@@ -1,9 +1,15 @@
 # Arduino IDE용 다운로드
 
-[Keyring-Arduino.zip](Keyring-Arduino.zip)에는 블록 코딩을 실행하는 펌웨어 2.0.0과 필요한 헤더 파일 5개가 들어 있습니다. 압축을 풀고 **`Keyring/Keyring.ino`**를 Arduino IDE로 엽니다. 같은 폴더의 `.h` 파일은 함께 둡니다.
+[Keyring-Arduino.zip 내려받기](https://raw.githubusercontent.com/themonsteredu/keyring/main/downloads/Keyring-Arduino.zip)
 
-기존 **Adafruit SSD1306·Adafruit GFX·Adafruit BusIO** 라이브러리에 **ArduinoJson 7.4.2**를 추가 설치합니다. 보드는 **ESP32C3 Dev Module**, ESP32 Core는 **3.3.7**을 사용합니다. USB CDC On Boot는 Enabled, Flash Size는 4MB, Partition Scheme은 Huge APP으로 설정하고 연결한 USB 포트로 업로드합니다.
+펌웨어 **2.2.0**은 도톰한 표정, 아이콘·온도·습도 날씨 화면, 블록 코딩을 지원합니다. ZIP에는 스케치·헤더 7개·폰트 라이선스까지 **총 9개 파일**이 들어 있습니다.
 
-성공한 배선을 유지합니다: **GND → G, VCC → 3.3V, SDA → GPIO4, SCL → GPIO5**.
+1. 압축을 풀고 **`Keyring/Keyring.ino`**를 Arduino IDE로 엽니다. 같은 폴더의 파일을 함께 둡니다.
+2. **Adafruit SSD1306·Adafruit GFX·Adafruit BusIO·ArduinoJson 7.4.2**를 설치합니다.
+3. 보드 **ESP32C3 Dev Module**, 코어 **3.3.7**, **USB CDC On Boot: Enabled**, **Flash Size: 4MB**, **Partition Scheme: Huge APP**으로 설정하고 업로드합니다.
 
-전체 과정은 [배선·업로드 안내](../docs/hardware-and-upload.md)를 참고하세요. 개발자가 스케치나 내장 웹 자산을 수정했다면 저장소 루트에서 `python3 tools/package_arduino.py`로 ZIP을 갱신하고, `python3 tools/package_arduino.py --check`로 소스와 일치하는지 검사합니다.
+배선은 **GND → G, VCC → 3.3V, SDA → GPIO4, SCL → GPIO5**입니다.
+
+웹 화면을 새로 여는 것만으로 실제 OLED는 바뀌지 않습니다. 새 표정과 습도를 보려면 이 펌웨어를 다시 업로드하세요. 자세한 과정은 [배선·업로드 안내](../docs/hardware-and-upload.md)에 있습니다.
+
+개발자는 `bash tools/build.sh`로 내장 웹 자산·펌웨어·ZIP을 함께 갱신합니다. `python3 tools/package_arduino.py --check`로 ZIP과 스케치가 일치하는지 확인합니다.

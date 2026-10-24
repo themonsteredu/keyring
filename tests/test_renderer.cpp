@@ -47,14 +47,14 @@ int main() {
         assert(memcmp(b.data, other.data, sizeof(b.data)) == 0);
         const int pixels = whitePixels(b);
         // A milk-carton face is bright features on black, not a filled animal.
-        assert(pixels >= 50 && pixels < 1000);
+        assert(pixels >= 180 && pixels < 1400);
         for (int y = 0; y < 64; ++y)
           for (int x = 0; x < 128; ++x)
             if (x < 8 || x >= 120 || y < 6 || y >= 58)
               assert(!b.get(x, y));
         // The space between the eyes stays black; there is no filled head.
         for (int y = 16; y < 34; ++y)
-          for (int x = 56; x < 72; ++x) assert(!b.get(x, y));
+          for (int x = 58; x < 70; ++x) assert(!b.get(x, y));
         assert(guarded.before == 0x51f00d51 && guarded.after == 0xa17e1234);
         animation.insert(hash(b));
         if (phase == 0) identities.insert(hash(b));
@@ -71,7 +71,7 @@ int main() {
           keyring::character_detail::styleFor(character);
       const int left = 64 - face.spacing;
       const int right = 64 + face.spacing;
-      assert(closed.get(left, 28) && closed.get(right, 28));
+      assert(closed.get(left, 30) && closed.get(right, 30));
       assert(!closed.get(left, 22) && !closed.get(right, 22));
       keyring::FrameBuffer half;
       keyring::renderCharacter(half, character, emotion, 13);
@@ -80,9 +80,27 @@ int main() {
     }
   }
   assert(identities.size() == 30);  // Eye styles and expressions stay distinct.
+  // The approved default happy face has thick smiling arches and a W mouth;
+  // excited eyes have a black highlight rather than reusing closed arches.
+  keyring::FrameBuffer happy, excited, sleepy, sad, love;
+  keyring::renderCharacter(happy, 0, 0, 0);
+  keyring::renderCharacter(excited, 0, 1, 0);
+  keyring::renderCharacter(sleepy, 0, 2, 0);
+  keyring::renderCharacter(sad, 0, 3, 0);
+  keyring::renderCharacter(love, 0, 5, 0);
+  for (int y = 20; y < 27; ++y) assert(happy.get(38, y));
+  assert(!happy.get(38, 31));
+  for (int y = 48; y < 53; ++y) assert(happy.get(58, y));
+  assert(excited.get(38, 15) && excited.get(38, 35));
+  assert(!excited.get(36, 21));
+  for (int y = 31; y < 37; ++y) assert(sleepy.get(38, y));
+  assert(sleepy.get(64, 48));
+  assert(sad.get(94, 46) && !sad.get(34, 46));  // Only one falling tear.
+  assert(love.get(32, 22) && love.get(44, 22));
+  assert(!love.get(38, 16));  // Separate heart lobes remain readable.
   keyring::FrameBuffer fallback, wrapped;
   keyring::renderCharacter(fallback, 255, 255, 0);
   keyring::renderCharacter(wrapped, 4, 0, 32);
   assert(memcmp(fallback.data, wrapped.data, sizeof(fallback.data)) == 0);
-  printf("Renderer passed: %u frames, 30 unique face-only selections, bright blink/animation/black margins/bounds.\n", checked);
+  printf("Renderer passed: %u frames, 30 unique face-only selections, approved bold expressions/blink/animation/black margins/bounds.\n", checked);
 }

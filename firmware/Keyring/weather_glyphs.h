@@ -6,6 +6,7 @@
 namespace keyring { namespace weather_detail {
 struct Glyph { uint16_t code; uint8_t width; uint16_t rows[12]; };
 static const Glyph kGlyphs[] = {
+  {37,5,{19,19,8,4,2,25,25,0,0,0,0,0}}, // %
   {45,5,{0,0,0,31,0,0,0,0,0,0,0,0}}, // -
   {46,1,{0,0,0,0,0,1,1,0,0,0,0,0}}, // .
   {47,5,{16,8,8,4,2,2,1,0,0,0,0,0}}, // /

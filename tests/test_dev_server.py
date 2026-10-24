@@ -90,6 +90,41 @@ class MockHTTP(unittest.TestCase):
         self.request("/api/weather", sample("sample"))
         self.assertEqual(self.request("/api/state")[1]["weatherStatus"], "sample")
 
+    def test_humidity_persists_after_reboot_including_zero_and_one_hundred(self):
+        weather = sample()
+        weather["current"]["humidity"] = 58
+        for i, point in enumerate(weather["hourly"]):
+            point["humidity"] = i + 40
+        weather["hourly"][0]["humidity"] = 0
+        weather["hourly"][-1]["humidity"] = 100
+        self.assertEqual(self.request("/api/weather", weather)[0], 200)
+        self.request("/api/time", {"epoch": weather["fetchedAt"]})
+        self.request("/api/debug/reboot", {})
+        state = self.request("/api/state")[1]
+        self.assertEqual(state["weather"], weather)
+        self.assertEqual(state["weatherStatus"], "clock-unknown")
+
+    def test_legacy_weather_does_not_fabricate_humidity(self):
+        weather = sample()
+        self.assertEqual(self.request("/api/weather", weather)[0], 200)
+        self.request("/api/debug/reboot", {})
+        cached = self.request("/api/state")[1]["weather"]
+        self.assertNotIn("humidity", cached["current"])
+        self.assertTrue(all("humidity" not in point for point in cached["hourly"]))
+
+    def test_malformed_humidity_cannot_replace_saved_weather(self):
+        weather = sample()
+        weather["current"]["humidity"] = 58
+        self.assertEqual(self.request("/api/weather", weather)[0], 200)
+        for value in (-1, 101, 58.5, None, "58", True, False):
+            for is_current in (True, False):
+                with self.subTest(value=value, is_current=is_current):
+                    candidate = copy.deepcopy(weather)
+                    point = candidate["current"] if is_current else candidate["hourly"][-1]
+                    point["humidity"] = value
+                    self.assertEqual(self.request("/api/weather", candidate)[0], 400)
+                    self.assertEqual(self.request("/api/state")[1]["weather"], weather)
+
     def test_invalid_weather_cannot_replace_cache(self):
         weather = sample()
         self.request("/api/weather", weather)

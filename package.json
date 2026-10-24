@@ -1,6 +1,6 @@
 {
   "name": "keyring",
-  "version": "2.1.0",
+  "version": "2.2.0",
   "private": true,
   "description": "ESP32-C3 스마트 감정·날씨 키링 — 오프라인 OLED 설정",
   "scripts": {

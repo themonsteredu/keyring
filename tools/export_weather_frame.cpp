@@ -4,7 +4,7 @@
 #include "../firmware/Keyring/weather_renderer.h"
 
 int main(int argc, char** argv) {
-  if (argc != 8) return 2;
+  if (argc != 9) return 2;
   const int status = atoi(argv[1]);
   const int page = atoi(argv[2]);
   const int phase = atoi(argv[3]);
@@ -12,13 +12,14 @@ int main(int argc, char** argv) {
   const float degrees = strtof(argv[5], nullptr);
   const uint32_t received = static_cast<uint32_t>(strtoull(argv[6], nullptr, 10));
   const uint32_t measured = static_cast<uint32_t>(strtoull(argv[7], nullptr, 10));
+  const int humidity = atoi(argv[8]);
   keyring_core::Weather weather;
   weather.fetchedAt = received;
-  weather.current = keyring_core::ForecastPoint(measured, degrees, static_cast<int16_t>(code));
+  weather.current = keyring_core::ForecastPoint(measured, degrees, static_cast<int16_t>(code), humidity);
   const int codes[] = {0,3,61,73,95,45};
   for (int i = 0; i < 24; ++i)
     weather.hourly[i] = keyring_core::ForecastPoint((received / 3600 + i + 1) * 3600,
-                                                  -10.5f + i * 2.5f, codes[i % 6]);
+                                                  -10.5f + i * 2.5f, codes[i % 6], (i * 7) % 101);
   keyring::FrameBuffer frame;
   keyring::renderWeather(frame, status ? &weather : nullptr,
                         static_cast<keyring_core::WeatherStatus>(status),

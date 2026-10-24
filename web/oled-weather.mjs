@@ -3,7 +3,6 @@ import { WEATHER_GLYPHS } from './weather-glyphs.mjs';
 // Pixel-for-pixel companion to firmware/Keyring/weather_renderer.h. This does
 // not use browser fonts: Korean text and digits are the actual OLED bitmaps.
 export const OLED_WEATHER_LABELS = Object.freeze({ missing: '날씨 없음', sample: '연습 날씨', 'clock-unknown': '시각 확인', stale: '지난 예보', fresh: '최근 날씨' });
-const ICON_LABELS = { sun: '맑음', cloud: '흐림', rain: '비', snow: '눈', storm: '번개', fog: '안개' };
 
 function weatherIcon(code) {
   if (code === 0 || code === 1) return 'sun';
@@ -68,71 +67,77 @@ export function renderWeatherFrame({ weather = null, status = 'missing', page = 
     }
     return x;
   }
-  function boldLine(x0, y0, x1, y1, on = true) { line(x0, y0, x1, y1, on); line(x0, y0 + 1, x1, y1 + 1, on); }
-  function smile(cx, cy, blink) {
-    if (blink) { rectangle(cx - 7, cy - 2, 4, 2, false); rectangle(cx + 4, cy - 2, 4, 2, false); }
-    else { ellipse(cx - 5, cy - 1, 1, 2, false); ellipse(cx + 6, cy - 1, 1, 2, false); }
-    line(cx - 3, cy + 3, cx - 1, cy + 5, false); line(cx - 1, cy + 5, cx + 2, cy + 5, false); line(cx + 2, cy + 5, cx + 4, cy + 3, false);
+  function stroke(x0, y0, x1, y1, thickness = 3, on = true) {
+    for (let dy = 0; dy < thickness; dy += 1) for (let dx = 0; dx < thickness; dx += 1)
+      line(x0 + dx, y0 + dy, x1 + dx, y1 + dy, on);
   }
-  function icon(x, y, kind, small) {
-    if (small) {
-      if (kind === 'sun') {
-        ellipse(x + 6, y + 5, 4, 4); line(x + 6, y - 1, x + 6, y); line(x + 6, y + 10, x + 6, y + 11);
-        line(x, y + 5, x + 1, y + 5); line(x + 11, y + 5, x + 12, y + 5);
-        pixel(x + 4, y + 4, false); pixel(x + 8, y + 4, false); line(x + 5, y + 7, x + 7, y + 7, false);
-        return;
+  function smile(cx, cy, blink) {
+    for (const eye of [-1, 1]) {
+      const x = cx + eye * 7;
+      if (blink) rectangle(x - 3, cy - 3, 7, 2, false);
+      else {
+        stroke(x - 3, cy - 2, x - 1, cy - 4, 2, false);
+        stroke(x - 1, cy - 4, x + 1, cy - 4, 2, false);
+        stroke(x + 1, cy - 4, x + 3, cy - 2, 2, false);
       }
-      ellipse(x + 4, y + 4, 3, 3); ellipse(x + 8, y + 3, 3, 3); rectangle(x + 1, y + 4, 11, 3);
-      pixel(x + 4, y + 4, false); pixel(x + 8, y + 4, false);
-      if (kind === 'rain') { line(x + 4, y + 9, x + 3, y + 10); line(x + 9, y + 9, x + 8, y + 10); }
-      else if (kind === 'snow') { pixel(x + 4, y + 9); pixel(x + 8, y + 10); pixel(x + 7, y + 8); }
-      else if (kind === 'storm') { line(x + 7, y + 8, x + 5, y + 10); line(x + 5, y + 10, x + 7, y + 10); pixel(x + 6, y + 11); }
-      else if (kind === 'fog') { line(x + 1, y + 9, x + 10, y + 9); line(x + 3, y + 11, x + 12, y + 11); }
-      return;
     }
+    stroke(cx - 4, cy + 3, cx - 2, cy + 5, 2, false);
+    stroke(cx - 2, cy + 5, cx + 2, cy + 5, 2, false);
+    stroke(cx + 2, cy + 5, cx + 4, cy + 3, 2, false);
+  }
+  function droplet(x, y) {
+    triangle(x + 3, y, x, y + 6, x + 6, y + 6);
+    ellipse(x + 3, y + 6, 3, 3);
+  }
+  function icon(x, y, kind) {
     const blink = phase === 14 || phase === 15;
     if (kind === 'sun') {
-      ellipse(x + 24, y + 17, 11, 11); boldLine(x + 24, y + 1, x + 24, y + 3); boldLine(x + 24, y + 31, x + 24, y + 33);
-      boldLine(x + 8, y + 17, x + 10, y + 17); boldLine(x + 38, y + 17, x + 40, y + 17);
+      ellipse(x + 25, y + 22, 14, 14);
+      rectangle(x + 23, y, 5, 5); rectangle(x + 23, y + 40, 5, 5);
+      rectangle(x + 3, y + 20, 5, 5); rectangle(x + 43, y + 20, 5, 5);
       const tilt = Math.floor(phase / 8) % 2;
-      boldLine(x + 12, y + 5 + tilt, x + 14, y + 7 + tilt); boldLine(x + 34, y + 27 - tilt, x + 36, y + 29 - tilt);
-      boldLine(x + 12, y + 29 - tilt, x + 14, y + 27 - tilt); boldLine(x + 34, y + 7 + tilt, x + 36, y + 5 + tilt);
-      smile(x + 24, y + 17, blink); return;
+      stroke(x + 9, y + 6 + tilt, x + 12, y + 9 + tilt);
+      stroke(x + 36, y + 33 - tilt, x + 39, y + 36 - tilt);
+      stroke(x + 9, y + 36 - tilt, x + 12, y + 33 - tilt);
+      stroke(x + 36, y + 9 + tilt, x + 39, y + 6 + tilt);
+      smile(x + 25, y + 22, blink); return;
     }
     const cy = y + Math.floor(phase / 8) % 2;
-    ellipse(x + 13, cy + 15, 8, 8); ellipse(x + 23, cy + 10, 10, 10); ellipse(x + 33, cy + 15, 9, 8); rectangle(x + 12, cy + 15, 23, 10);
-    smile(x + 23, cy + 15, blink);
+    ellipse(x + 12, cy + 20, 10, 10); ellipse(x + 24, cy + 13, 13, 13);
+    ellipse(x + 37, cy + 20, 11, 10); rectangle(x + 11, cy + 20, 27, 12);
+    smile(x + 25, cy + 21, blink);
     if (kind === 'rain') {
-      const fall = Math.floor(phase / 4) % 3;
-      for (let drop = 0; drop < 3; drop += 1) boldLine(x + 13 + drop * 11, y + 27 + fall, x + 11 + drop * 11, y + 30 + fall);
+      const fall = Math.floor(phase / 8) % 2;
+      for (let drop = 0; drop < 3; drop += 1) droplet(x + 9 + drop * 12, y + 34 + fall);
     } else if (kind === 'snow') {
       for (let flake = 0; flake < 2; flake += 1) {
-        const cx = x + 15 + flake * 17; const fy = y + 29 + Math.floor(phase / 8) % 2;
-        line(cx - 3, fy, cx + 3, fy); line(cx, fy - 3, cx, fy + 3);
-        pixel(cx - 2, fy - 2); pixel(cx + 2, fy + 2); pixel(cx + 2, fy - 2); pixel(cx - 2, fy + 2);
+        const cx = x + 15 + flake * 20; const fy = y + 39 + Math.floor(phase / 8) % 2;
+        rectangle(cx - 4, fy - 1, 9, 3); rectangle(cx - 1, fy - 4, 3, 9);
+        pixel(cx - 3, fy - 3); pixel(cx + 3, fy + 3); pixel(cx + 3, fy - 3); pixel(cx - 3, fy + 3);
       }
-    } else if (kind === 'storm') { triangle(x + 24, y + 25, x + 18, y + 30, x + 26, y + 30); triangle(x + 20, y + 29, x + 28, y + 29, x + 21, y + 35); }
-    else if (kind === 'fog') { boldLine(x + 7, y + 29, x + 36, y + 29); boldLine(x + 13, y + 34, x + 42, y + 34); }
+    } else if (kind === 'storm') {
+      triangle(x + 25, y + 33, x + 17, y + 39, x + 28, y + 39);
+      triangle(x + 21, y + 37, x + 31, y + 37, x + 23, y + 45);
+    } else if (kind === 'fog') { rectangle(x + 5, y + 36, 32, 3); rectangle(x + 13, y + 42, 32, 3); }
   }
 
-  if (!weather) { text('날씨 없음', 40, 0); icon(39, 14, 'cloud', false); text('날씨를 담아 주세요', 16, 51); return buffer; }
-  page %= 5;
-  text(OLED_WEATHER_LABELS[status] || OLED_WEATHER_LABELS.missing, 0, 0);
-  if (page) { text('예보', 78, 0); text(`${page}/4`, 108, 0); } else text('날씨', 106, 0);
-  const received = kstDate(weather.fetchedAt);
-  text('받음', 0, 51); text(`${pad(received.month)}/${pad(received.day)} ${pad(received.hour)}:${pad(received.minute)}`, 25, 51);
-  if (!page) {
-    const kind = weatherIcon(weather.current.code); icon(0, 14, kind, false);
-    const tenths = round(Math.fround(Math.fround(weather.current.temperature) * 10)); const magnitude = Math.abs(tenths);
-    const end = text(`${tenths < 0 ? '-' : ''}${Math.floor(magnitude / 10)}.${magnitude % 10}`, 54, 14, 2); text('°', end, 15);
-    text(ICON_LABELS[kind], 55, 35);
-    const measured = kstDate(weather.current.time); text(`${pad(measured.hour)}:${pad(measured.minute)}`, 87, 36);
-    return buffer;
+  if (!weather) { icon(38, 3, 'cloud'); text('날씨 없음', 40, 50); return buffer; }
+  page %= 25;
+  const point = page ? weather.hourly[page - 1] : weather.current;
+  if (status !== 'fresh') text(OLED_WEATHER_LABELS[status] || OLED_WEATHER_LABELS.missing, 1, 0);
+  if (page) {
+    const when = kstDate(point.time);
+    const end = text(`${pad(when.month)}/${pad(when.day)} ${pad(when.hour)}`, 69, 0);
+    text('시', end, 0);
   }
-  weather.hourly.slice((page - 1) * 6, page * 6).forEach((point, cell) => {
-    const x = cell % 2 * 64; const y = 14 + Math.floor(cell / 2) * 12;
-    const when = kstDate(point.time); text(pad(when.hour), x, y); text('시', x + 12, y);
-    const end = text(String(round(Math.fround(point.temperature))), x + 25, y); text('°', end, y); icon(x + 50, y, weatherIcon(point.code), true);
-  });
+  icon(2, 14, weatherIcon(point.code));
+  const degrees = String(round(Math.fround(point.temperature)));
+  const width = degrees.length * 18 + 5;
+  const x = 64 + Math.trunc((62 - width) / 2);
+  const end = text(degrees, x, 11, 3); text('°', end, 12, 2);
+  const humidity = Number.isInteger(point.humidity) && point.humidity >= 0 ? `${point.humidity}%` : '--%';
+  const humidityWidth = humidity.length * 12 - 2;
+  const humidityX = 64 + Math.trunc((62 - (humidityWidth + 11)) / 2);
+  droplet(humidityX, 45); text(humidity, humidityX + 11, 39, 2);
   return buffer;
 }

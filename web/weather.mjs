@@ -9,7 +9,13 @@ function validatePoint(point, name) {
   requireValue(point && validTime(point.time), `${name} 시각이 올바르지 않아요.`);
   requireValue(isNumber(point.temperature) && point.temperature >= -90 && point.temperature <= 65, `${name} 온도가 올바르지 않아요.`);
   requireValue(Number.isInteger(point.code) && WMO_CODES.has(point.code), `${name} 날씨 코드가 올바르지 않아요.`);
-  return { time: point.time, temperature: point.temperature, code: point.code };
+  const result = { time: point.time, temperature: point.temperature, code: point.code };
+  // Old schema-1 exports can omit humidity. Never turn missing data into 0%.
+  if (Object.hasOwn(point, 'humidity')) {
+    requireValue(Number.isInteger(point.humidity) && point.humidity >= 0 && point.humidity <= 100, `${name} 습도가 올바르지 않아요.`);
+    result.humidity = point.humidity;
+  }
+  return result;
 }
 
 /** Returns a clean object; rejects strings disguised as numbers and malformed forecasts. */
@@ -34,15 +40,16 @@ export function validateWeather(input) {
 export function normalizeOpenMeteo(response, location, now = Math.floor(Date.now() / 1000)) {
   requireValue(response && response.current && response.hourly, '날씨 서비스 응답에 필요한 정보가 없어요.');
   requireValue(response.current_units?.temperature_2m === '°C' && response.hourly_units?.temperature_2m === '°C', '섭씨 온도 응답만 사용할 수 있어요.');
+  requireValue(response.current_units?.relative_humidity_2m === '%' && response.hourly_units?.relative_humidity_2m === '%', '상대 습도(%) 응답이 필요해요.');
   const hourly = response.hourly;
-  requireValue(Array.isArray(hourly.time) && Array.isArray(hourly.temperature_2m) && Array.isArray(hourly.weather_code), '시간별 예보 형식이 올바르지 않아요.');
-  requireValue(hourly.time.length === hourly.temperature_2m.length && hourly.time.length === hourly.weather_code.length, '시간별 예보 개수가 맞지 않아요.');
+  requireValue(Array.isArray(hourly.time) && Array.isArray(hourly.temperature_2m) && Array.isArray(hourly.weather_code) && Array.isArray(hourly.relative_humidity_2m), '시간별 예보 형식이 올바르지 않아요.');
+  requireValue(hourly.time.length === hourly.temperature_2m.length && hourly.time.length === hourly.weather_code.length && hourly.time.length === hourly.relative_humidity_2m.length, '시간별 예보 개수가 맞지 않아요.');
   const start = hourly.time.indexOf((Math.floor(now / 3600) + 1) * 3600);
   requireValue(start >= 0 && start + 24 <= hourly.time.length, '앞으로 24시간 예보가 아직 없어요. 잠시 후 다시 받아 주세요.');
   return validateWeather({
     schema: 1, source: 'open-meteo', location, fetchedAt: now,
-    current: { time: response.current.time, temperature: response.current.temperature_2m, code: response.current.weather_code },
-    hourly: hourly.time.slice(start, start + 24).map((time, index) => ({ time, temperature: hourly.temperature_2m[start + index], code: hourly.weather_code[start + index] })),
+    current: { time: response.current.time, temperature: response.current.temperature_2m, code: response.current.weather_code, humidity: response.current.relative_humidity_2m },
+    hourly: hourly.time.slice(start, start + 24).map((time, index) => ({ time, temperature: hourly.temperature_2m[start + index], code: hourly.weather_code[start + index], humidity: hourly.relative_humidity_2m[start + index] })),
   });
 }
 
@@ -59,8 +66,8 @@ export function makeSample(now = Math.floor(Date.now() / 1000)) {
   const codes = [0, 0, 1, 2, 3, 61, 61, 3, 2, 1, 0, 0, 3, 3, 71, 71, 3, 2, 1, 0, 0, 0, 1, 2];
   return validateWeather({ schema: 1, source: 'sample', fetchedAt: now,
     location: { name: '연습용 마을', latitude: 37.5665, longitude: 126.978 },
-    current: { time: now, temperature: 22, code: 0 },
-    hourly: codes.map((code, index) => ({ time: first + index * 3600, temperature: Math.round((20 + Math.sin(index / 3) * 4) * 10) / 10, code })),
+    current: { time: now, temperature: 24, code: 0, humidity: 58 },
+    hourly: codes.map((code, index) => ({ time: first + index * 3600, temperature: Math.round((20 + Math.sin(index / 3) * 4) * 10) / 10, code, humidity: Math.round(65 + Math.sin(index / 4) * 17) })),
   });
 }
 

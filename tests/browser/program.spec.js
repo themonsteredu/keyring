@@ -51,10 +51,10 @@ test('nested JSON becomes editable blocks and local preview runs then restores s
   await page.locator('#tab-weather').click();
   await expect(page.locator('#program-status')).toContainText('미리 실행이 끝났어요');
   await expect(page.locator('#preview-name')).toHaveText('우리 동네 날씨');
-  await expect(page.locator('#preview-run-state')).toContainText('받은 시각과 예보 상태');
+  await expect(page.locator('#preview-run-state')).toHaveText('날씨 미리보기');
   await page.locator('#tab-customize').click();
   await expect(page.locator('#preview-name')).toHaveText('행복한 말랑눈');
-  await expect(page.locator('#preview-run-state')).toContainText('눈 모양과 표정');
+  await expect(page.locator('#preview-run-state')).toHaveText('표정 미리보기');
   await page.locator('#tab-blocks').click();
   await expect(page.locator('#preview-name')).toHaveText('사랑에 빠진 웃음눈');
   await expect(page.locator('#preview-run-state')).toContainText('미리 실행이 끝났어요');

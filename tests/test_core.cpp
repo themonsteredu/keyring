@@ -31,6 +31,23 @@ int main() {
 
   Weather weather = fixture();
   CHECK(validWeather(weather));
+  CHECK(weather.current.humidity == -1);
+  CHECK(weather.hourly[23].humidity == -1);
+  CHECK(ForecastPoint(weather.fetchedAt, 24, 0, 58).humidity == 58);
+  for (int humidity : {-1, 0, 58, 100}) {
+    Weather humid = weather;
+    humid.current.humidity = static_cast<int16_t>(humidity);
+    humid.hourly[23].humidity = static_cast<int16_t>(humidity);
+    CHECK(validWeather(humid));
+  }
+  for (int humidity : {-2, 101, 32767}) {
+    Weather humid = weather;
+    humid.current.humidity = static_cast<int16_t>(humidity);
+    CHECK(!validWeather(humid));
+    humid = weather;
+    humid.hourly[23].humidity = static_cast<int16_t>(humidity);
+    CHECK(!validWeather(humid));
+  }
   Weather bad = weather;
   bad.hourly[12].time += 1;
   CHECK(!validWeather(bad));

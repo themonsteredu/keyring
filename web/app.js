@@ -14,6 +14,8 @@ const CITIES = {
   jeju: { name: '제주', latitude: 33.4996, longitude: 126.5312 },
 };
 const $ = (id) => document.getElementById(id);
+// Match the firmware's roundf for negative half-degrees as well.
+const roundTemperature = (value) => value < 0 ? -Math.round(-value) : Math.round(value);
 let selection = { character: 'rabbit', emotion: 'happy', view: 'character' };
 let lastSaved = null;
 let device = null;
@@ -89,7 +91,7 @@ function activateTab(name, focus = false) {
   }
   if (focus) $(`tab-${name}`).focus();
   $('preview-run-dot').classList.toggle('running', name === 'blocks' && !!programPreview?.running);
-  text('preview-run-state', name === 'customize' ? '눈 모양과 표정을 고르면 바로 보여요' : name === 'weather' ? '받은 시각과 예보 상태도 함께 확인해요' : $('program-status').textContent);
+  text('preview-run-state', name === 'customize' ? '표정 미리보기' : name === 'weather' ? '날씨 미리보기' : $('program-status').textContent);
   updatePreviewTitle(); drawMain();
   window.dispatchEvent(new Event('resize'));
 }
@@ -133,10 +135,10 @@ function updateButtonLocks() {
 }
 function updateSaveControls() {
   updateButtonLocks();
-  if (!connected) saveMessage('미리보기 모드 · 키링에 연결하면 저장할 수 있어요.');
+  if (!connected) saveMessage('키링 연결 후 저장할 수 있어요.');
   else if (device.storage === false) saveMessage('키링의 저장 공간을 열지 못했어요. 선생님께 알려 주세요.', 'error');
-  else if (sameSettings(selection, lastSaved)) saveMessage('키링에 저장된 모습이에요.', 'success');
-  else saveMessage('마음에 들면 적용하기를 눌러 저장해 주세요.');
+  else if (sameSettings(selection, lastSaved)) saveMessage('저장됨', 'success');
+  else saveMessage('');
 }
 
 document.querySelectorAll('fieldset').forEach((fieldset) => fieldset.addEventListener('change', (event) => {
@@ -144,6 +146,7 @@ document.querySelectorAll('fieldset').forEach((fieldset) => fieldset.addEventLis
   if (!(name in selection)) return;
   blocksStudio?.stop({ localOnly: true });
   programPreview = null; selection[name] = value; phase = 0; updateControls();
+  $('display-hint').hidden = !!localWeather || selection.view === 'character';
 }));
 
 /** The same vertical-page buffer bytes that Adafruit SSD1306 sends to the OLED. */
@@ -168,8 +171,8 @@ function drawFrame(canvas, encoded, mini = false) {
 function drawMain() {
   if (!atlas) return;
   const shown = displayedSettings();
-  const cycle = (performance.now() - previewStartedAt) % 40000;
-  if (shown.view === 'weather' || (shown.view === 'auto' && cycle >= 15000)) { drawWeatherScreen(); return; }
+  const cycle = (performance.now() - previewStartedAt) % 24000;
+  if (shown.view === 'weather' || (shown.view === 'auto' && cycle >= 12000)) { drawWeatherScreen(); return; }
   const frames = atlas.data[`${shown.character}:${shown.emotion}`];
   if (frames) drawFrame($('preview'), frames[phase % atlas.frames]);
 }
@@ -178,9 +181,9 @@ function drawWeatherScreen() {
   const clock = weatherOnDevice ? { trusted: device?.clock?.trusted, now: typeof device?.clock?.now === 'number' ? device.clock.now + Math.floor((performance.now() - deviceClockReadAt) / 1000) : null } : { trusted: true, now: Math.floor(Date.now() / 1000) };
   const status = weatherStatus(localWeather, clock.trusted, clock.now);
   const elapsed = performance.now() - previewStartedAt;
-  const cycle = elapsed % 40000;
+  const cycle = elapsed % 24000;
   const shown = displayedSettings();
-  const page = shown.view === 'auto' && cycle >= 15000 ? Math.floor((cycle - 15000) / 5000) : Math.floor(elapsed / 5000) % 5;
+  const page = shown.view === 'auto' ? (cycle >= 20000 ? 1 + Math.floor(elapsed / 24000) % 24 : 0) : (elapsed % 12000 >= 8000 ? 1 + Math.floor(elapsed / 12000) % 24 : 0);
   const buffer = renderWeatherFrame({ weather: localWeather, status, page, phase });
   drawFrame($('preview'), btoa(String.fromCharCode(...buffer)));
 }
@@ -272,7 +275,7 @@ async function connect() {
     try {
       await api('time', { epoch: Math.floor(Date.now() / 1000) });
       await readState(false);
-      if (device.weather && device.weather.source !== 'sample') setMessage('weather-action-state', '휴대폰 시각으로 키링의 시계를 맞췄어요. 예보의 오래된 정도를 확인할 수 있어요.');
+      if (device.weather && device.weather.source !== 'sample') setMessage('weather-action-state', '');
     } catch {
       setMessage('weather-action-state', '키링은 연결됐지만 시각을 맞추지 못했어요. 휴대폰 날짜를 확인하고 시각 맞추기를 눌러 주세요.', true);
     }
@@ -291,7 +294,7 @@ $('apply').addEventListener('click', async () => {
     if (response.ok !== true) throw new Error('저장이 확인되지 않았어요.');
     await readState(false);
     if (!sameSettings(lastSaved, requested)) throw new Error('저장된 값이 달라요. 다시 적용해 주세요.');
-    saveMessage('저장 완료! 전원을 껐다 켜도 그대로예요.', 'success');
+    saveMessage('저장 완료', 'success');
   } catch (error) { saveMessage(`저장하지 못했어요. ${error.message}`, 'error'); }
   finally { busy = false; updateButtonLocks(); }
 });
@@ -319,6 +322,8 @@ function icon(container, kind) {
 }
 function renderWeather() {
   $('weather-content').hidden = !localWeather;
+  $('weather-empty').hidden = !!localWeather;
+  $('display-hint').hidden = !!localWeather || selection.view === 'character';
   $('download-weather').disabled = !localWeather;
   const badge = $('weather-badge');
   if (!localWeather) { badge.className = 'weather-badge neutral'; badge.textContent = '저장된 날씨 없음'; updatePreviewTitle(); drawMain(); return; }
@@ -330,39 +335,44 @@ function renderWeather() {
   const kind = weatherKind(localWeather.current.code);
   icon($('current-icon'), kind);
   text('weather-location', localWeather.location.name);
-  text('temperature', `${Math.round(localWeather.current.temperature * 10) / 10}°`);
+  text('temperature', `${roundTemperature(localWeather.current.temperature)}°`);
+  text('humidity', Number.isInteger(localWeather.current.humidity) ? `${localWeather.current.humidity}%` : '--%');
+  $('humidity').setAttribute('aria-label', Number.isInteger(localWeather.current.humidity) ? `습도 ${localWeather.current.humidity}%` : '습도 정보 없음');
   text('weather-description', WEATHER_LABELS[kind]);
   text('weather-source', localWeather.source === 'sample' ? '출처: 수업용 샘플 데이터' : '출처: Open-Meteo · 모델 기반');
   text('weather-updated', `받은 시각 ${kstTime(localWeather.fetchedAt, true)} (한국)`);
   text('weather-current-time', `현재 날씨 기준 ${kstTime(localWeather.current.time, true)}`);
   const warnings = {
-    sample: '연습용으로 만든 예보예요. 실제 현재 날씨나 실제 예보가 아니에요.',
-    'clock-unknown': '전원이 꺼진 뒤 키링은 현재 시각을 몰라요. 저장된 예보이며, 최신인지 확인할 수 없어요. 휴대폰 날짜를 확인하고 시각 맞추기를 눌러 주세요.',
-    stale: '받은 지 3시간이 지났거나 예보 범위를 벗어났어요. 저장된 과거 자료이므로 지금 날씨로 생각하지 말고 새 예보를 받아 주세요.',
-    fresh: weatherOnDevice ? '최근에 받은 예보예요. 인터넷이 끊겨도 볼 수 있지만, 시간이 지나면 오래된 예보라고 표시돼요.' : '아직 키링에 저장되지 않았어요. 날씨 파일을 내려받은 뒤 키링에 연결해서 불러와 주세요.',
+    sample: '',
+    'clock-unknown': '최신인지 확인할 수 없어요. 시각을 맞춰 주세요.',
+    stale: '새 날씨를 받아 주세요.',
+    fresh: '',
   };
   text('weather-warning', warnings[status]);
+  $('weather-warning').hidden = !warnings[status];
   $('weather-warning').classList.toggle('fresh', status === 'fresh');
   const forecast = $('forecast'); forecast.replaceChildren();
   localWeather.hourly.forEach((point) => {
     const item = document.createElement('li');
     const time = document.createElement('time'); time.dateTime = new Date(point.time * 1000).toISOString(); time.textContent = kstTime(point.time);
     const glyph = document.createElement('span'); glyph.className = 'weather-icon'; glyph.setAttribute('role', 'img'); glyph.setAttribute('aria-label', WEATHER_LABELS[weatherKind(point.code)]); icon(glyph, weatherKind(point.code));
-    const temperature = document.createElement('strong'); temperature.textContent = `${Math.round(point.temperature)}°`;
-    item.append(time, glyph, temperature); forecast.append(item);
+    const temperature = document.createElement('strong'); temperature.textContent = `${roundTemperature(point.temperature)}°`;
+    const humidity = document.createElement('span'); humidity.className = 'forecast-humidity'; humidity.textContent = Number.isInteger(point.humidity) ? `${point.humidity}%` : '--%';
+    humidity.setAttribute('aria-label', Number.isInteger(point.humidity) ? `습도 ${point.humidity}%` : '습도 정보 없음');
+    item.append(time, glyph, temperature, humidity); forecast.append(item);
   });
   updatePreviewTitle(); drawMain();
 }
 async function storeWeather(weather) {
   localWeather = validateWeather(weather); weatherOnDevice = false; renderWeather();
-  if (!connected) { setMessage('weather-action-state', '날씨를 준비했어요. 파일을 내려받고 키링에 연결한 뒤 불러와 주세요.'); return; }
+  if (!connected) { setMessage('weather-action-state', '키링으로 옮기려면 파일을 저장해 주세요.'); return; }
   try {
     const timeResponse = await api('time', { epoch: Math.floor(Date.now() / 1000) });
     if (timeResponse.ok !== true) throw new Error('키링 시각을 맞추지 못했어요.');
     const response = await api('weather', localWeather);
     if (response.ok !== true) throw new Error('저장이 확인되지 않았어요.');
     await readState(false);
-    setMessage('weather-action-state', device.simulated ? '개발용 모의 기기에 저장했어요. 실제 키링에는 적용되지 않아요.' : '날씨를 키링에 저장했어요. 인터넷이 끊겨도 이 예보를 볼 수 있어요.');
+    setMessage('weather-action-state', device.simulated ? '개발용 모의 기기에 저장했어요. 실제 키링에는 적용되지 않아요.' : '날씨 저장 완료');
   } catch (error) {
     weatherOnDevice = false; renderWeather();
     setMessage('weather-action-state', `날씨는 준비했지만 키링에 저장하지 못했어요. ${error.message} 파일로 보관해 다시 불러와 주세요.`, true);
@@ -370,11 +380,11 @@ async function storeWeather(weather) {
 }
 $('fetch-weather').addEventListener('click', async () => {
   if (busy || weatherBusy) return;
-  weatherBusy = true; updateButtonLocks(); setMessage('weather-action-state', 'Open-Meteo에서 실제 날씨를 받고 있어요…');
+  weatherBusy = true; updateButtonLocks(); setMessage('weather-action-state', '날씨를 받고 있어요…');
   const controller = new AbortController(); const timeout = setTimeout(() => controller.abort(), 12000);
   try {
     const location = CITIES[$('city').value];
-    const params = new URLSearchParams({ latitude: String(location.latitude), longitude: String(location.longitude), current: 'temperature_2m,weather_code', hourly: 'temperature_2m,weather_code', forecast_days: '2', timeformat: 'unixtime', timezone: 'GMT', temperature_unit: 'celsius' });
+    const params = new URLSearchParams({ latitude: String(location.latitude), longitude: String(location.longitude), current: 'temperature_2m,relative_humidity_2m,weather_code', hourly: 'temperature_2m,relative_humidity_2m,weather_code', forecast_days: '2', timeformat: 'unixtime', timezone: 'GMT', temperature_unit: 'celsius' });
     const response = await fetch(`https://api.open-meteo.com/v1/forecast?${params}`, { signal: controller.signal });
     if (!response.ok) throw new Error(`날씨 서비스 응답 ${response.status}`);
     const normalized = normalizeOpenMeteo(await response.json(), location);
@@ -389,7 +399,7 @@ $('download-weather').addEventListener('click', () => {
   const url = URL.createObjectURL(blob); const link = document.createElement('a'); link.href = url;
   link.download = `keyring-${localWeather.source === 'sample' ? 'SAMPLE' : 'weather'}-${new Date(localWeather.fetchedAt * 1000).toISOString().slice(0, 10)}.json`;
   document.body.append(link); link.click(); link.remove(); setTimeout(() => URL.revokeObjectURL(url), 2000);
-  setMessage('weather-action-state', '날씨 파일을 내려받았어요. 키링 Wi-Fi에 연결한 뒤 이 파일을 불러와 주세요.');
+  setMessage('weather-action-state', '파일 저장 완료');
 });
 $('weather-file').addEventListener('change', async (event) => {
   const file = event.target.files?.[0]; if (!file || busy || weatherBusy) return;
@@ -408,7 +418,7 @@ $('sample-weather').addEventListener('click', async () => {
   setMessage('weather-action-state', '연습용 날씨를 준비하고 있어요. 실제 날씨가 아니에요.');
   try {
     await storeWeather(makeSample());
-    if (weatherOnDevice) setMessage('weather-action-state', device.simulated ? '개발용 모의 기기에 저장했어요. 연습용 샘플이며 실제 키링이나 실제 날씨가 아니에요.' : '연습용 샘플을 저장했어요. 실제 날씨와 예보가 아니에요.');
+    if (weatherOnDevice) setMessage('weather-action-state', device.simulated ? '개발용 모의 기기에 저장했어요. 연습용 샘플이며 실제 키링이나 실제 날씨가 아니에요.' : '연습용 날씨 저장 완료');
   } finally { weatherBusy = false; updateButtonLocks(); }
 });
 $('sync-time').addEventListener('click', async () => {
@@ -417,7 +427,7 @@ $('sync-time').addEventListener('click', async () => {
   try {
     const response = await api('time', { epoch: Math.floor(Date.now() / 1000) });
     if (response.ok !== true) throw new Error('시각 맞추기가 확인되지 않았어요.');
-    await readState(false); setMessage('weather-action-state', '휴대폰 시각으로 키링 시계를 맞췄어요. 오래된 예보는 새로 받아 주세요.');
+    await readState(false); setMessage('weather-action-state', '시각을 맞췄어요.');
   } catch (error) { setMessage('weather-action-state', `시각을 맞추지 못했어요. ${error.message}`, true); }
   finally { busy = false; updateButtonLocks(); }
 });

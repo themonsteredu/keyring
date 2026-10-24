@@ -14,19 +14,19 @@
 <body data-active-tab="customize">
   <header class="site-header">
     <div class="header-inner wrap">
-      <a href="#main" class="brand" aria-label="키링 스튜디오 처음으로"><span class="brand-symbol"><svg viewBox="0 0 32 32" aria-hidden="true"><path d="M11 10V7a5 5 0 0 1 10 0v3"/><rect x="5" y="10" width="22" height="19" rx="6"/><path d="M11 18h1m8 0h1m-9 5q4 3 8 0"/></svg></span><span>키링 스튜디오</span><span class="brand-tag">우유팩 키링 만들기</span></a>
+      <a href="#main" class="brand" aria-label="키링 스튜디오 처음으로"><span class="brand-symbol"><svg viewBox="0 0 32 32" aria-hidden="true"><path d="M11 10V7a5 5 0 0 1 10 0v3"/><rect x="5" y="10" width="22" height="19" rx="6"/><path d="M11 18h1m8 0h1m-9 5q4 3 8 0"/></svg></span><span>키링 스튜디오</span></a>
       <div class="header-actions"><span id="connection" class="connection" role="status"><span class="status-dot"></span><span id="connection-text">키링 확인 중</span></span><button id="reconnect" class="button reconnect-button" type="button" title="키링 다시 연결"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M20 8a8 8 0 1 0 0 8m0-13v5h-5"/></svg><span>다시 연결</span></button></div>
     </div>
   </header>
 
   <main id="main" class="wrap main-wrap">
-    <section class="studio-intro" aria-labelledby="page-title"><div><p class="section-kicker">작은 우유팩에 담는 나의 마음</p><h1 id="page-title">오늘은 어떤 표정일까?</h1></div><p class="intro-caption">눈 모양과 표정을 골라 나만의 키링을 만들어요.</p></section>
+    <h1 id="page-title" class="sr-only">키링 꾸미기</h1>
     <div id="oled-note" class="notice warning" hidden><p>OLED를 찾지 못했어요. 전원을 뽑고 GND·3.3V·SDA4·SCL5 배선을 선생님과 확인해 주세요.</p></div>
 
     <div class="studio-layout">
       <aside class="preview-column" aria-labelledby="preview-title">
         <section class="preview-panel">
-          <div class="panel-heading"><h2 id="preview-title">나의 우유팩 키링</h2><span class="pixel-tag">128 × 64</span></div>
+          <div class="panel-heading"><h2 id="preview-title">내 키링</h2></div>
           <div class="keyring-stage">
             <div class="stage-halo" aria-hidden="true"></div>
             <div class="milk-carton">
@@ -35,18 +35,18 @@
               <div class="carton-roof" aria-hidden="true"><span></span></div>
               <div class="carton-side" aria-hidden="true"></div>
               <div class="carton-front">
-                <div class="carton-label" aria-hidden="true"><span class="carton-label-line"></span>오늘의 마음<span class="carton-label-line"></span></div>
+                <div class="carton-label" aria-hidden="true"><span class="carton-label-line"></span><span class="carton-label-line"></span></div>
                 <div class="screen-bezel"><canvas id="preview" width="128" height="64" role="img" aria-label="행복한 표정 미리보기"></canvas></div>
-                <div class="carton-decoration" aria-hidden="true"><svg class="carton-heart" viewBox="0 0 28 26"><path d="M14 23 3 13C-5 3 10-3 14 5 18-3 33 3 25 13Z"/></svg><span>마음 한 팩</span><svg class="carton-sparkle" viewBox="0 0 24 24"><path d="m12 2 3 7 7 3-7 3-3 7-3-7-7-3 7-3Z"/></svg></div>
+                <div class="carton-decoration" aria-hidden="true"><svg class="carton-heart" viewBox="0 0 28 26"><path d="M14 23 3 13C-5 3 10-3 14 5 18-3 33 3 25 13Z"/></svg><svg class="carton-sparkle" viewBox="0 0 24 24"><path d="m12 2 3 7 7 3-7 3-3 7-3-7-7-3 7-3Z"/></svg></div>
               </div>
             </div>
           </div>
-          <div class="preview-bottom"><div><p id="preview-name" class="preview-name">행복한 말랑눈</p><p id="preview-caption" class="microcopy">진짜 키링에도 이 표정 그대로</p></div><button id="animation-toggle" class="icon-button" type="button" aria-pressed="true" aria-label="애니메이션 멈추기"><svg id="pause-icon" viewBox="0 0 24 24" aria-hidden="true"><path d="M8 6v12M16 6v12"/></svg><span id="animation-label">멈춤</span></button></div>
+          <div class="preview-bottom"><div><p id="preview-name" class="preview-name">행복한 말랑눈</p><p id="preview-caption" class="sr-only">진짜 키링에도 이 표정 그대로</p></div><button id="animation-toggle" class="icon-button" type="button" aria-pressed="true" aria-label="애니메이션 멈추기"><svg id="pause-icon" viewBox="0 0 24 24" aria-hidden="true"><path d="M8 6v12M16 6v12"/></svg><span id="animation-label" class="sr-only">멈춤</span></button></div>
           <p id="atlas-error" class="inline-error" hidden>미리보기를 불러오지 못했어요. 새로고침해 주세요.</p>
-          <div class="preview-run-strip"><span id="preview-run-dot" class="run-dot"></span><span id="preview-run-state">표정을 고르면 바로 보여요</span></div>
+          <div class="sr-only preview-run-strip"><span id="preview-run-dot" class="run-dot"></span><span id="preview-run-state">표정을 고르면 바로 보여요</span></div>
         </section>
-        <div id="offline-note" class="notice mode-note" hidden><span class="mode-dot" aria-hidden="true"></span><p>지금은 미리보기 중이에요. 키링에 연결하면 저장할 수 있어요.</p></div>
-        <details class="connect-help"><summary>내 키링에 연결하는 방법</summary><ol><li>키링에 USB 전원을 연결해요.</li><li>휴대폰 Wi-Fi에서 <strong>Keyring-</strong>으로 시작하는 내 키링을 골라요.</li><li>비밀번호 <strong>keyring123</strong>을 입력해요.</li><li>브라우저에서 <strong>192.168.4.1</strong>을 열어요.</li></ol></details>
+        <div id="offline-note" class="sr-only" hidden><span class="mode-dot" aria-hidden="true"></span><p>지금은 미리보기 중이에요. 키링에 연결하면 저장할 수 있어요.</p></div>
+
       </aside>
 
       <section class="workspace-card" aria-label="키링 만들기 작업 공간">
@@ -57,40 +57,38 @@
         </div>
 
         <section id="blocks-panel" class="tab-panel blocks-panel" role="tabpanel" aria-labelledby="tab-blocks" hidden>
-          <div class="workspace-heading"><div><h2>블록으로 움직여요</h2><p>블록을 끌어 연결하고, 실행 버튼을 눌러요.</p></div><span class="workspace-label">나의 코드</span></div>
-          <div class="program-tools"><label for="program-examples" class="examples-label">예제로 시작하기<select id="program-examples" aria-label="코딩 예제 선택"></select></label><button id="program-reset" class="button light compact" type="button"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M20 8a8 8 0 1 0 0 8m0-13v5h-5"/></svg>처음부터</button></div>
-          <div class="blockly-shell"><div class="canvas-topbar"><span class="canvas-label"><span></span><span></span><span></span>블록 작업 공간</span><span>끌어서 연결해요</span></div><div id="blockly-workspace" aria-label="블록 코딩 작업 공간"></div></div>
-          <div class="program-playbar"><div class="run-buttons"><button id="program-run" class="button primary" type="button"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="m8 5 11 7-11 7Z"/></svg>미리 실행</button><button id="program-stop" class="button light stop-button" type="button"><svg viewBox="0 0 24 24" aria-hidden="true"><rect x="7" y="7" width="10" height="10" rx="1"/></svg>멈추기</button></div><label class="loop-toggle"><input id="program-loop" type="checkbox" checked><span class="toggle-track"></span>계속 반복</label></div>
+          <div class="program-tools"><label for="program-examples" class="examples-label"><span class="sr-only">코딩 예제</span><select id="program-examples" aria-label="코딩 예제 선택"></select></label><button id="program-reset" class="button light compact" type="button"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M20 8a8 8 0 1 0 0 8m0-13v5h-5"/></svg>처음부터</button></div>
+          <div class="blockly-shell"><div id="blockly-workspace" aria-label="블록 코딩 작업 공간"></div></div>
+          <div class="program-playbar"><div class="run-buttons"><button id="program-run" class="button primary" type="button"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="m8 5 11 7-11 7Z"/></svg>실행</button><button id="program-stop" class="button light stop-button" type="button"><svg viewBox="0 0 24 24" aria-hidden="true"><rect x="7" y="7" width="10" height="10" rx="1"/></svg>멈추기</button></div><label class="loop-toggle"><input id="program-loop" type="checkbox" checked><span class="toggle-track"></span>반복</label></div>
           <p id="program-status" class="program-status" role="status" aria-live="polite">예제를 불러오고 있어요.</p>
-          <div class="program-transfer"><button id="program-save" class="button dark" type="button" disabled><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M5 3h12l3 3v15H4V3h1Zm3 0v6h8V3M8 21v-8h8v8"/></svg>키링에 저장</button><div class="transfer-files"><button id="program-export" class="text-button" type="button"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 3v12m-4-4 4 4 4-4M5 16v5h14v-5"/></svg>코드 파일 저장</button><label class="file-button" for="program-import"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 16V4m-4 4 4-4 4 4M5 16v5h14v-5"/></svg>코드 불러오기<input id="program-import" type="file" accept="application/json,.json"></label></div></div>
-          <p class="transfer-hint">키링이 없다면 코드 파일로 보관해 두세요. 나중에 연결해서 불러올 수 있어요.</p>
+          <div class="program-transfer"><button id="program-save" class="button dark" type="button" disabled><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M5 3h12l3 3v15H4V3h1Zm3 0v6h8V3M8 21v-8h8v8"/></svg>키링에 담기</button><div class="transfer-files"><button id="program-export" class="text-button" type="button"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 3v12m-4-4 4 4 4-4M5 16v5h14v-5"/></svg>파일 저장</button><label class="file-button" for="program-import"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 16V4m-4 4 4-4 4 4M5 16v5h14v-5"/></svg>불러오기<input id="program-import" type="file" accept="application/json,.json"></label></div></div>
         </section>
 
         <section id="customize-panel" class="tab-panel customize-panel" role="tabpanel" aria-labelledby="tab-customize">
-          <div class="workspace-heading"><div><h2>나만의 표정을 골라요</h2><p>눈과 입만으로도 마음을 전할 수 있어요.</p></div><span class="workspace-label yellow">지금 내 마음</span></div>
-          <section class="selection-section" aria-labelledby="character-title"><div class="section-heading"><span class="step-number">1</span><h3 id="character-title">눈 모양</h3></div><fieldset id="characters" class="choice-grid character-grid"><legend class="sr-only">눈 모양 선택</legend></fieldset></section>
-          <section class="selection-section" aria-labelledby="emotion-title"><div class="section-heading"><span class="step-number coral">2</span><h3 id="emotion-title">오늘의 표정</h3></div><fieldset id="emotions" class="choice-grid emotion-grid"><legend class="sr-only">감정 선택</legend></fieldset></section>
-          <section class="selection-section view-section" aria-labelledby="display-title"><div class="section-heading"><span class="step-number blue">3</span><h3 id="display-title">키링에 담을 화면</h3></div><fieldset id="views" class="view-options"><legend class="sr-only">키링 표시 모드</legend><label class="view-option"><input type="radio" name="view" value="character" checked><span><strong>표정</strong><small>눈과 입이 움직여요</small></span></label><label class="view-option"><input type="radio" name="view" value="weather"><span><strong>날씨</strong><small>저장된 예보</small></span></label><label class="view-option"><input type="radio" name="view" value="auto"><span><strong>번갈아 보기</strong><small>표정과 날씨</small></span></label></fieldset><p id="display-hint" class="display-hint">날씨 화면은 날씨 탭에서 예보를 먼저 담아 주세요.</p></section>
-          <div class="save-area"><button id="apply" class="button primary" type="button" disabled>이 모습 키링에 저장<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M5 12h14m-5-5 5 5-5 5"/></svg></button><p id="save-state" class="save-state" role="status" aria-live="polite">키링 연결을 확인하고 있어요.</p></div>
+          <section class="selection-section" aria-labelledby="emotion-title"><div class="section-heading"><h2 id="emotion-title">오늘의 표정</h2></div><fieldset id="emotions" class="choice-grid emotion-grid"><legend class="sr-only">감정 선택</legend></fieldset></section>
+          <details id="eye-options" class="extra-options"><summary>눈 모양 바꾸기</summary><fieldset id="characters" class="choice-grid character-grid"><legend id="character-title" class="sr-only">눈 모양 선택</legend></fieldset></details>
+          <section class="selection-section view-section" aria-labelledby="display-title"><div class="section-heading"><h3 id="display-title">화면</h3></div><fieldset id="views" class="view-options"><legend class="sr-only">키링 표시 모드</legend><label class="view-option"><input type="radio" name="view" value="character" checked><span><strong>표정</strong></span></label><label class="view-option"><input type="radio" name="view" value="weather"><span><strong>날씨</strong></span></label><label class="view-option"><input type="radio" name="view" value="auto"><span><strong>번갈아</strong></span></label></fieldset><p id="display-hint" class="display-hint" hidden>날씨 탭에서 먼저 날씨를 받아 주세요.</p></section>
+          <div class="save-area"><button id="apply" class="button primary" type="button" disabled>키링에 담기<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M5 12h14m-5-5 5 5-5 5"/></svg></button><p id="save-state" class="save-state" role="status" aria-live="polite"></p></div>
         </section>
-    <section id="weather-panel" class="tab-panel weather-card" role="tabpanel" aria-labelledby="tab-weather" hidden>
-      <div class="weather-heading"><div><p class="section-kicker">작은 날씨 친구를 만나요</p><h2 id="weather-title">오늘 하늘은 어때?</h2><p>우리 동네 날씨를 키링에 담아 두세요.</p></div><span id="weather-badge" class="weather-badge neutral">저장된 날씨 없음</span></div>
-      <div class="weather-actions"><label class="city-label" for="city">우리 동네<select id="city"><option value="seoul">서울</option><option value="busan">부산</option><option value="incheon">인천</option><option value="daejeon">대전</option><option value="gwangju">광주</option><option value="daegu">대구</option><option value="jeju">제주</option></select></label><button id="fetch-weather" class="button secondary" type="button"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M19 8A8 8 0 1 0 20 15M19 3v5h-5"/></svg>실제 날씨 받기</button><button id="download-weather" class="button subtle" type="button" disabled>날씨 파일 내려받기</button></div>
-      <p id="weather-action-state" class="action-state" role="status" aria-live="polite">실제 날씨를 받으려면 인터넷 연결이 필요해요.</p>
-      <div class="weather-import"><label for="weather-file" class="file-button">미리 받은 날씨 파일 불러오기<input id="weather-file" type="file" accept="application/json,.json"></label><button id="sample-weather" class="text-button" type="button">연습용 날씨 보기</button><button id="sync-time" class="text-button" type="button" disabled>휴대폰 시각 맞추기</button></div>
-      <div id="weather-content" hidden>
-        <div class="current-weather"><div id="current-icon" class="weather-icon large" aria-hidden="true"></div><div><p id="weather-location" class="weather-location"></p><div class="temperature-line"><strong id="temperature"></strong><span id="weather-description"></span></div></div><div class="weather-meta"><p id="weather-source"></p><p id="weather-updated"></p><p id="weather-current-time"></p></div></div>
-        <p id="weather-warning" class="weather-warning" role="status"></p>
-        <div class="forecast-heading"><h3>24시간 예보</h3><p>한국 시간 · 다음 정시부터 24개</p></div><ol id="forecast" class="forecast" aria-label="한 시간 간격의 예보 24개"></ol>
-      </div>
-      <details class="weather-help"><summary>Wi-Fi에 연결했는데 날씨를 받을 수 없나요?</summary><div><p>키링의 Wi-Fi는 설정용이라 인터넷을 제공하지 않아요. 휴대폰이 모바일 데이터를 함께 사용하지 못하면 다음 순서로 해 보세요.</p><ol><li>인터넷이 되는 곳에서 이 웹 화면을 열고 <strong>실제 날씨 받기</strong>를 눌러요. 선생님이 제공하는 온라인 화면이나 컴퓨터의 개발 서버를 이용할 수 있어요.</li><li><strong>날씨 파일 내려받기</strong>로 파일을 보관해요.</li><li>내 키링 Wi-Fi에 연결한 뒤 <strong>192.168.4.1</strong>을 열어요.</li><li><strong>미리 받은 날씨 파일 불러오기</strong>로 파일을 골라요. 저장이 끝났다는 안내를 확인해요.</li></ol><p>휴대폰 날짜와 시간이 정확해야 해요. 전원을 완전히 껐다 켜면 키링의 시계가 초기화되므로 <strong>휴대폰 시각 맞추기</strong>를 눌러 주세요.</p></div></details>
-      <p class="weather-credit">실제 날씨: <a href="https://open-meteo.com/" target="_blank" rel="noopener noreferrer">Open-Meteo</a> · 비상업적 교육용 무료 API · <a href="https://creativecommons.org/licenses/by/4.0/" target="_blank" rel="noopener noreferrer">CC BY 4.0</a> · 기상청 관측값이 아닌 모델 기반 자료이며 현재 날씨도 추정값이에요. 지역 좌표는 날씨 요청에만 사용해요.</p>
-    </section>
+        <section id="weather-panel" class="tab-panel weather-card" role="tabpanel" aria-labelledby="tab-weather" hidden>
+          <div class="weather-heading"><h2 id="weather-title" class="sr-only">우리 동네 날씨</h2><span id="weather-badge" class="weather-badge neutral">저장된 날씨 없음</span></div>
+          <div class="weather-actions"><label class="city-label" for="city"><span class="sr-only">우리 동네</span><select id="city"><option value="seoul">서울</option><option value="busan">부산</option><option value="incheon">인천</option><option value="daejeon">대전</option><option value="gwangju">광주</option><option value="daegu">대구</option><option value="jeju">제주</option></select></label><button id="fetch-weather" class="button secondary" type="button"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M19 8A8 8 0 1 0 20 15M19 3v5h-5"/></svg>날씨 받기</button></div>
+          <p id="weather-action-state" class="action-state" role="status" aria-live="polite"></p>
+          <div id="weather-empty" class="weather-empty"><svg viewBox="0 0 80 64" aria-hidden="true"><path d="M20 48a14 14 0 0 1-1-28 21 21 0 0 1 40-1 15 15 0 1 1 1 29Z"/><path class="cloud-face" d="M28 32q3-5 6 0m11 0q3-5 6 0M35 39q5 5 10 0"/></svg><p>우리 동네 날씨를 담아 보세요</p></div>
+          <div id="weather-content" hidden>
+            <div class="current-weather"><div id="current-icon" class="weather-icon large" aria-hidden="true"></div><div class="current-readings"><p id="weather-location" class="weather-location"></p><div class="temperature-line"><strong id="temperature"></strong><span id="weather-description" class="sr-only"></span></div><div class="humidity-line"><svg viewBox="0 0 20 24" aria-hidden="true"><path d="M10 2C8 7 3 11 3 16a7 7 0 0 0 14 0c0-5-5-9-7-14Z"/></svg><span id="humidity" aria-label="습도"></span></div></div></div>
+            <p id="weather-warning" class="weather-warning" role="status"></p>
+            <details id="forecast-details" class="extra-options forecast-details"><summary>24시간 예보</summary><ol id="forecast" class="forecast" aria-label="한 시간 간격의 예보 24개"></ol></details>
+            <details class="extra-options weather-info"><summary>받은 시각 · 출처</summary><div class="weather-meta"><p id="weather-updated"></p><p id="weather-current-time"></p><p id="weather-source"></p></div></details>
+          </div>
+          <details id="weather-files" class="extra-options"><summary>파일 · 연습</summary><div class="weather-import"><button id="download-weather" class="text-button" type="button" disabled>파일 저장</button><label for="weather-file" class="file-button">불러오기<input id="weather-file" type="file" accept="application/json,.json"></label><button id="sample-weather" class="text-button" type="button">연습용 날씨</button><button id="sync-time" class="text-button" type="button" disabled>시각 맞추기</button></div></details>
+          <details class="weather-help"><summary>날씨 도움말</summary><div><p>키링 Wi-Fi는 인터넷을 제공하지 않아요. 연결 전에 날씨를 받아 파일로 저장한 뒤, 키링에 연결해서 불러오세요.</p><p>전원을 껐다 켜면 휴대폰 시각을 다시 맞춰 주세요. 오래된 예보는 새로 받아 주세요.</p><p>습도는 우리 동네의 날씨 예보 값이에요. 키링이 실내 습도를 측정하지는 않아요.</p><p class="weather-credit">날씨: <a href="https://open-meteo.com/" target="_blank" rel="noopener noreferrer">Open-Meteo</a> · <a href="https://creativecommons.org/licenses/by/4.0/" target="_blank" rel="noopener noreferrer">CC BY 4.0</a> · 비상업적 교육용 무료 API. 현재 날씨를 포함한 모델 기반 자료이며 관측값과 다를 수 있어요.</p></div></details>
+        </section>
 
       </section>
     </div>
-    <footer class="page-footer"><p>작은 우유팩에 담긴 커다란 마음</p><button id="reset" class="text-button danger" type="button" disabled>키링 전체 초기화</button></footer>
-    <div class="mobile-save-bar"><button id="apply-mobile" class="button primary" type="button" disabled>이 모습 키링에 저장<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M5 12h14m-5-5 5 5-5 5"/></svg></button><p id="save-state-mobile" class="save-state" aria-hidden="true">키링 연결을 확인하고 있어요.</p></div>
+    <footer class="page-footer"><details class="connect-help"><summary>도움말</summary><p>내 키링에 연결하기</p><ol><li>키링에 USB 전원을 연결해요.</li><li>휴대폰 Wi-Fi에서 <strong>Keyring-</strong>으로 시작하는 내 키링을 골라요.</li><li>비밀번호 <strong>keyring123</strong>을 입력해요.</li><li>브라우저에서 <strong>192.168.4.1</strong>을 열어요.</li></ol></details><button id="reset" class="text-button danger" type="button" disabled>초기화</button></footer>
+    <div class="mobile-save-bar"><button id="apply-mobile" class="button primary" type="button" disabled>키링에 담기<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M5 12h14m-5-5 5 5-5 5"/></svg></button><p id="save-state-mobile" class="save-state" aria-hidden="true"></p></div>
   </main>
   <dialog id="reset-dialog" class="reset-dialog"><form method="dialog"><span class="dialog-symbol" aria-hidden="true">↺</span><h2>처음부터 다시 만들까요?</h2><p>저장된 눈 모양, 표정, 날씨와 코드가 모두 지워져요. 행복한 말랑눈으로 다시 시작해요.</p><div class="dialog-actions"><button class="button light" value="cancel">돌아가기</button><button id="confirm-reset" class="button danger-fill" value="reset">초기화하기</button></div></form></dialog>
   <noscript><p class="notice wrap">스튜디오를 사용하려면 브라우저에서 자바스크립트를 켜 주세요.</p></noscript>

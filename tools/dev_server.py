@@ -47,7 +47,9 @@ def validate_weather(data):
     def point(item):
         return (isinstance(item, dict) and epoch(item.get("time")) and
                 number(item.get("temperature")) and -90 <= item["temperature"] <= 65 and
-                type(item.get("code")) is int and item["code"] in CODES)
+                type(item.get("code")) is int and item["code"] in CODES and
+                ("humidity" not in item or
+                 (type(item["humidity"]) is int and 0 <= item["humidity"] <= 100)))
     if not point(data.get("current")) or not -3600 <= data["current"]["time"] - data["fetchedAt"] <= 300:
         raise ValueError("현재 날씨 시각·온도·코드를 확인해 주세요.")
     hourly = data.get("hourly")
@@ -227,7 +229,7 @@ class MockDevice:
                 status = "fresh"
         return {"character": self.character, "emotion": self.emotion, "view": self.view,
                 "ssid": "개발용 모의 키링", "simulated": True, "oled": True, "storage": True,
-                "firmware": "2.1.0-mock", "capabilities": {"blockPrograms": True},
+                "firmware": "2.2.0-mock", "capabilities": {"blockPrograms": True},
                 "clock": {"trusted": now is not None, "now": now},
                 "weather": self.weather, "weatherStatus": status,
                 "program": self.program, "programRunning": self.program_running,

@@ -1,4 +1,5 @@
 const { test, expect } = require('@playwright/test');
+const fs = require('node:fs');
 
 test.beforeEach(async ({ request }) => {
   await request.post('/api/reset', { data: {} });
@@ -15,12 +16,25 @@ async function ready(page, tab = 'customize') {
   if (tab) await page.locator(`#tab-${tab}`).click();
 }
 
+async function openDetails(page, id) {
+  const details = page.locator(`#${id}`);
+  if (await details.getAttribute('open') === null) await details.locator(':scope > summary').click();
+}
+async function chooseEyes(page, value) {
+  await openDetails(page, 'eye-options');
+  await page.locator(`#characters .choice:has(input[value=${value}])`).click();
+}
+
 test('opens with face styles and shows the same OLED polarity in the choices', async ({ page }) => {
   await ready(page, null);
   await expect(page.locator('#tab-customize')).toHaveAttribute('aria-selected', 'true');
+  await expect(page.locator('#eye-options')).not.toHaveAttribute('open');
+  await expect(page.locator('#emotions .choice')).toHaveCount(6);
+  await expect(page.locator('#emotions')).toBeVisible();
+  await expect(page.locator('.connect-help')).not.toHaveAttribute('open');
   await expect(page.locator('#characters .choice strong')).toHaveText(['말랑눈', '초롱눈', '웃음눈', '콩알눈', '네모눈']);
   await expect(page.locator('#preview-name')).toHaveText('행복한 말랑눈');
-  await page.locator('#characters .choice:has(input[value=monster])').click();
+  await chooseEyes(page, 'monster');
   await page.locator('#emotions .choice:has(input[value=love])').click();
   await expect(page.locator('#preview-name')).toHaveText('사랑에 빠진 네모눈');
   const palettes = await page.locator('#characters canvas, #emotions canvas').evaluateAll(canvases => canvases.map(c => {
@@ -41,7 +55,7 @@ test('all 30 previews exactly match firmware framebuffer pixels', async ({ page 
     await page.locator('#animation-toggle').click();
   const atlas = await page.request.get('/sprites.json').then(r => r.json());
   for (const character of atlas.characters) for (const emotion of atlas.emotions) {
-    await page.locator(`#characters .choice:has(input[value=${character}])`).click();
+    await chooseEyes(page, character);
     await page.locator(`#emotions .choice:has(input[value=${emotion}])`).click();
     const frame = await page.locator('#preview').evaluate(c => {
       const pixels = c.getContext('2d').getImageData(0, 0, 128, 64).data;
@@ -63,7 +77,7 @@ test('all 30 previews exactly match firmware framebuffer pixels', async ({ page 
 test('apply acknowledges saved settings and restores after reload', async ({ page, request }) => {
   await page.setViewportSize({ width: 1440, height: 1000 });
   await ready(page);
-  await page.locator('#characters .choice:has(input[value=turtle])').click();
+  await chooseEyes(page, 'turtle');
   await page.locator('#emotions .choice:has(input[value=love])').click();
   await page.locator('.view-option:has(input[value=auto])').click();
   await page.locator('#apply').click();
@@ -80,7 +94,7 @@ test('save failure is visible and does not claim success', async ({ page, reques
   await ready(page);
   await page.route('**/api/settings', route => route.fulfill({ status: 503,
     contentType: 'application/json', body: JSON.stringify({ ok: false, error: 'storage_write_failed' }) }));
-  await page.locator('#characters .choice:has(input[value=cat])').click();
+  await chooseEyes(page, 'cat');
   await page.locator('#apply').click();
   await expect(page.locator('#save-state')).toContainText('저장하지 못했어요');
   expect((await request.get('/api/state').then(r => r.json())).character).toBe('rabbit');
@@ -89,6 +103,7 @@ test('save failure is visible and does not claim success', async ({ page, reques
 
 test('sample remains explicit; reset clears cached forecast and settings', async ({ page, request }) => {
   await ready(page, 'weather');
+  await openDetails(page, 'weather-files');
   await page.locator('#sample-weather').click();
   await expect(page.locator('#weather-action-state')).toContainText('모의 기기에 저장');
   await expect(page.locator('#weather-badge')).toContainText('실제 날씨 아님');
@@ -103,6 +118,7 @@ test('sample remains explicit; reset clears cached forecast and settings', async
 
 test('invalid imported forecast preserves previous cached forecast', async ({ page, request }) => {
   await ready(page, 'weather');
+  await openDetails(page, 'weather-files');
   await page.locator('#sample-weather').click();
   await expect(page.locator('#forecast li')).toHaveCount(24);
   const original = await request.get('/api/state').then(r => r.json());
@@ -120,12 +136,13 @@ test('offline editor can preview and reports real API failure without fake weath
   await expect(page.locator('#connection-text')).toHaveText('미리보기 모드');
   await expect(page.locator('#apply-mobile')).toBeDisabled();
   await page.locator('#tab-customize').click();
-  await page.locator('#characters .choice:has(input[value=bear])').click();
+  await chooseEyes(page, 'bear');
   await expect(page.locator('#preview-name')).toHaveText('행복한 웃음눈');
   await page.locator('#tab-weather').click();
   await page.locator('#fetch-weather').click();
   await expect(page.locator('#weather-action-state')).toContainText('날씨를 받지 못했어요');
   await expect(page.locator('#weather-content')).toBeHidden();
+  await openDetails(page, 'weather-files');
   await page.locator('#sample-weather').click();
   await expect(page.locator('#weather-badge')).toContainText('연습용');
   await expect(page.locator('#download-weather')).toBeEnabled();
@@ -166,7 +183,7 @@ test('open page ages cached weather past three hours without overwriting unsaved
   await page.clock.install();
   await ready(page);
   await expect(page.locator('#weather-badge')).toHaveText('키링에 저장됨');
-  await page.locator('#characters .choice:has(input[value=monster])').click();
+  await chooseEyes(page, 'monster');
   await page.locator('#tab-weather').click();
   await page.clock.fastForward(10802000);
   await page.evaluate(() => document.dispatchEvent(new Event('visibilitychange')));
@@ -176,11 +193,81 @@ test('open page ages cached weather past three hours without overwriting unsaved
 
 test('mobile bottom action saves without returning to the preview', async ({ page, request }) => {
   await ready(page);
-  await page.locator('#characters .choice:has(input[value=cat])').click();
+  await chooseEyes(page, 'cat');
   await page.locator('#emotions .choice:has(input[value=angry])').click();
   await expect(page.locator('#apply-mobile')).toBeVisible();
   await page.locator('#apply-mobile').click();
   await expect(page.locator('#save-state-mobile')).toContainText('저장 완료');
   const state = await request.get('/api/state').then(r => r.json());
   expect([state.character, state.emotion]).toEqual(['cat', 'angry']);
+});
+
+
+function openMeteoFixture(now) {
+  const firstHour = Math.floor(now / 3600) * 3600;
+  return {
+    current_units: { temperature_2m: '°C', relative_humidity_2m: '%' },
+    hourly_units: { temperature_2m: '°C', relative_humidity_2m: '%' },
+    current: { time: now, temperature_2m: -0.5, relative_humidity_2m: 58, weather_code: 0 },
+    hourly: {
+      time: Array.from({ length: 48 }, (_, i) => firstHour + i * 3600),
+      temperature_2m: Array.from({ length: 48 }, (_, i) => i === 1 ? -0.5 : 20 + i % 5),
+      relative_humidity_2m: Array.from({ length: 48 }, (_, i) => 40 + i),
+      weather_code: Array.from({ length: 48 }, (_, i) => i % 2 ? 3 : 0),
+    },
+  };
+}
+
+test('real API path requests humidity and preserves it through download, import, and reboot', async ({ page, request }) => {
+  // Controlled Open-Meteo-shaped response; this test does not claim a live API observation.
+  const now = Math.floor(Date.now() / 1000);
+  const response = openMeteoFixture(now);
+  const queries = [];
+  await page.route('https://api.open-meteo.com/**', route => {
+    queries.push(new URL(route.request().url()).searchParams);
+    return route.fulfill({ status: 200, contentType: 'application/json', body: JSON.stringify(response) });
+  });
+  await ready(page, 'weather');
+  await expect(page.locator('#weather-files')).not.toHaveAttribute('open');
+  await page.locator('#fetch-weather').click();
+  await expect(page.locator('#humidity')).toHaveText('58%');
+  await expect(page.locator('#temperature')).toHaveText('-1°');
+  expect(queries).toHaveLength(1);
+  expect(queries[0].get('current').split(',')).toContain('relative_humidity_2m');
+  expect(queries[0].get('hourly').split(',')).toContain('relative_humidity_2m');
+  await expect(page.locator('#forecast li')).toHaveCount(24);
+  await expect(page.locator('#forecast-details')).not.toHaveAttribute('open');
+  await openDetails(page, 'forecast-details');
+  await expect(page.locator('#forecast li').first()).toContainText('41%');
+  await expect(page.locator('#forecast li').first()).toContainText('-1°');
+  const stored = (await request.get('/api/state').then(r => r.json())).weather;
+  expect(stored.current.humidity).toBe(58);
+  expect(stored.hourly.map(point => point.humidity)).toEqual(Array.from({ length: 24 }, (_, i) => 41 + i));
+  await openDetails(page, 'weather-files');
+  const downloaded = page.waitForEvent('download');
+  await page.locator('#download-weather').click();
+  const file = await downloaded;
+  const exported = JSON.parse(fs.readFileSync(await file.path(), 'utf8'));
+  expect(exported).toEqual(stored);
+  await request.post('/api/reset', { data: {} });
+  await page.reload();
+  await page.locator('#tab-weather').click();
+  await openDetails(page, 'weather-files');
+  await page.locator('#weather-file').setInputFiles({ name: 'weather-with-humidity.json', mimeType: 'application/json', buffer: Buffer.from(JSON.stringify(exported)) });
+  await expect(page.locator('#humidity')).toHaveText('58%');
+  await expect.poll(async () => (await request.get('/api/state').then(r => r.json())).weather).toEqual(stored);
+  await request.post('/api/debug/reboot', { data: {} });
+  await page.reload();
+  await page.locator('#tab-weather').click();
+  await expect(page.locator('#humidity')).toHaveText('58%');
+  expect((await request.get('/api/state').then(r => r.json())).weather).toEqual(stored);
+});
+
+test('legacy saved forecasts show unknown humidity rather than inventing zero', async ({ page, request }) => {
+  await seedRealFixture(request);
+  await ready(page, 'weather');
+  await expect(page.locator('#humidity')).toHaveText('--%');
+  await openDetails(page, 'forecast-details');
+  await expect(page.locator('#forecast li').first()).toContainText('--%');
+  expect((await request.get('/api/state').then(r => r.json())).weather.current).not.toHaveProperty('humidity');
 });

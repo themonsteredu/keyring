@@ -110,9 +110,14 @@ static bool parsePoint(JsonVariantConst input, keyring_core::ForecastPoint& outp
       !input["temperature"].is<float>() || !input["code"].is<int>()) return false;
   const int code = input["code"].as<int>();
   if (!keyring_core::validWeatherCode(code)) return false;
+  const JsonVariantConst humidity = input["humidity"];
+  // An omitted field is a legacy record. Explicit null, strings, fractions,
+  // booleans and the internal -1 sentinel are never accepted from JSON.
+  if (!humidity.isUnbound() && (!humidity.is<int>() || humidity.as<int>() < 0 || humidity.as<int>() > 100)) return false;
   output.time = input["time"].as<uint32_t>();
   output.temperature = input["temperature"].as<float>();
   output.code = static_cast<int16_t>(code);
+  output.humidity = humidity.isUnbound() ? -1 : static_cast<int16_t>(humidity.as<int>());
   return keyring_core::validPoint(output);
 }
 
@@ -145,6 +150,7 @@ static void appendPoint(JsonObject object, const keyring_core::ForecastPoint& po
   object["time"] = point.time;
   object["temperature"] = point.temperature;
   object["code"] = point.code;
+  if (point.humidity >= 0) object["humidity"] = point.humidity;
 }
 
 static void appendWeather(JsonObject object, const keyring_core::Weather& value) {
@@ -231,7 +237,7 @@ static void stateRequest() {
   document["ssid"] = accessPointName;
   document["oled"] = oledReady;
   document["storage"] = storageReady;
-  document["firmware"] = "2.1.0";
+  document["firmware"] = "2.2.0";
   document["capabilities"]["blockPrograms"] = true;
   document["programRunning"] = programMachine.running();
   if (haveProgram) keyring_program::appendProgram(document["program"].to<JsonObject>(), savedProgram);
@@ -380,11 +386,12 @@ static void updateDisplay(uint64_t nowMs) {
   lastFrameMs = nowMs;
   const keyring_core::Settings& rendered = renderedSettings();
   bool showWeather = rendered.view == 1;
-  uint8_t page = (nowMs / 5000) % 5;
+  // Keep the quiet current screen visible for 8 s, then one forecast for 4 s.
+  uint8_t page = nowMs % 12000 >= 8000 ? 1 + (nowMs / 12000) % 24 : 0;
   if (rendered.view == 2) {
-    const uint32_t cycle = nowMs % 40000;
-    showWeather = cycle >= 15000;
-    page = showWeather ? static_cast<uint8_t>((cycle - 15000) / 5000) : 0;
+    const uint32_t cycle = nowMs % 24000;
+    showWeather = cycle >= 12000;
+    page = cycle >= 20000 ? 1 + (nowMs / 24000) % 24 : 0;
   }
   if (showWeather) weatherFrame(nowMs, page);
   else {

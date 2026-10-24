@@ -51,8 +51,11 @@ struct ForecastPoint {
   uint32_t time;
   float temperature;
   int16_t code;
-  ForecastPoint(uint32_t at = 0, float degrees = 0, int16_t weatherCode = 0)
-      : time(at), temperature(degrees), code(weatherCode) {}
+  // -1 means a legacy saved forecast did not include relative humidity.
+  int16_t humidity;
+  ForecastPoint(uint32_t at = 0, float degrees = 0, int16_t weatherCode = 0,
+                int16_t relativeHumidity = -1)
+      : time(at), temperature(degrees), code(weatherCode), humidity(relativeHumidity) {}
 };
 
 enum class WeatherSource : uint8_t { OpenMeteo = 0, Sample = 1 };
@@ -83,7 +86,8 @@ inline bool validWeatherCode(int code) {
 
 inline bool validPoint(const ForecastPoint& point) {
   return validEpoch(point.time) && std::isfinite(point.temperature) &&
-         point.temperature >= -90.0f && point.temperature <= 65.0f && validWeatherCode(point.code);
+         point.temperature >= -90.0f && point.temperature <= 65.0f && validWeatherCode(point.code) &&
+         point.humidity >= -1 && point.humidity <= 100;
 }
 
 inline bool validWeather(const Weather& weather) {

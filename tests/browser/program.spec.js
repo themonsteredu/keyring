@@ -9,6 +9,7 @@ const example = { schema: 1, enabled: true, loop: false, blocks: [
 test.beforeEach(async ({ request }) => { await request.post('/api/reset', { data: {} }); });
 async function ready(page) {
   await page.goto('/');
+  await page.locator('#tab-blocks').click();
   await expect(page.locator('#blockly-workspace .blocklySvg').first()).toBeVisible();
   await expect.poll(() => page.evaluate(async () => {
     const { getActiveStudio } = await import('/blocks-editor.mjs');
@@ -29,7 +30,7 @@ test('actual Blockly toolbox creates draggable blocks and disconnected code cann
   await ready(page);
   await expect(page.locator('#tab-blocks')).toHaveAttribute('aria-selected', 'true');
   const count = await page.evaluate(async () => (await import('/blocks-editor.mjs')).getActiveStudio().workspace.getAllBlocks(false).length);
-  await page.locator('.blocklyToolboxCategory').filter({ hasText: /^캐릭터$/ }).click();
+  await page.locator('.blocklyToolboxCategory').filter({ hasText: /^눈·표정$/ }).click();
   const source = await page.locator('.blocklyFlyout .blocklyDraggable').first().boundingBox();
   const target = await page.locator('#blockly-workspace').boundingBox();
   expect(source).not.toBeNull();
@@ -47,10 +48,18 @@ test('nested JSON becomes editable blocks and local preview runs then restores s
   await load(page);
   expect(await program(page)).toEqual(example);
   await page.locator('#program-run').click();
-  await expect(page.locator('#preview-name')).toHaveText('사랑에 빠진 곰');
+  await page.locator('#tab-weather').click();
   await expect(page.locator('#program-status')).toContainText('미리 실행이 끝났어요');
+  await expect(page.locator('#preview-name')).toHaveText('우리 동네 날씨');
+  await expect(page.locator('#preview-run-state')).toContainText('받은 시각과 예보 상태');
+  await page.locator('#tab-customize').click();
+  await expect(page.locator('#preview-name')).toHaveText('행복한 말랑눈');
+  await expect(page.locator('#preview-run-state')).toContainText('눈 모양과 표정');
+  await page.locator('#tab-blocks').click();
+  await expect(page.locator('#preview-name')).toHaveText('사랑에 빠진 웃음눈');
+  await expect(page.locator('#preview-run-state')).toContainText('미리 실행이 끝났어요');
   await page.locator('#program-stop').click();
-  await expect(page.locator('#preview-name')).toHaveText('행복한 토끼');
+  await expect(page.locator('#preview-name')).toHaveText('행복한 말랑눈');
   await expect(page.locator('#program-status')).toContainText('실행을 멈췄어요');
 });
 
@@ -61,7 +70,7 @@ test('a delayed animation-frame timestamp cannot prematurely stop a new preview'
   });
   await ready(page); await load(page);
   await page.locator('#program-run').click();
-  await expect(page.locator('#preview-name')).toHaveText('사랑에 빠진 곰');
+  await expect(page.locator('#preview-name')).toHaveText('사랑에 빠진 웃음눈');
 });
 
 test('device program save reads back exact AST, survives reboot, and stop persists', async ({ page, request }) => {
@@ -109,7 +118,7 @@ test('online editor runs and exports without a device; cached data is not invent
   await ready(page);
   await expect(page.locator('#program-save')).toBeDisabled();
   await load(page); await page.locator('#program-run').click();
-  await expect(page.locator('#preview-name')).toHaveText('사랑에 빠진 곰');
+  await expect(page.locator('#preview-name')).toHaveText('사랑에 빠진 웃음눈');
   const download = page.waitForEvent('download'); await page.locator('#program-export').click();
   const file = await download;
   expect(file.suggestedFilename()).toBe('keyring-program.json');
@@ -149,4 +158,21 @@ test('mobile studio fits viewport and legacy firmware has a clear upgrade path',
   expect(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth)).toBe(true);
   const toolbox = await page.locator('.blocklyToolbox').boundingBox();
   expect(toolbox.width).toBeGreaterThan(toolbox.height);
+});
+
+test('mobile block editing keeps the OLED result and run button in view', async ({ page }) => {
+  await page.setViewportSize({ width: 360, height: 800 });
+  await ready(page);
+  await page.locator('#blockly-workspace').scrollIntoViewIfNeeded();
+  const visible = async selector => page.locator(selector).evaluate(element => {
+    const r = element.getBoundingClientRect();
+    return r.width > 0 && r.height > 0 && r.top >= 0 && r.bottom <= innerHeight && r.left >= 0 && r.right <= innerWidth;
+  });
+  await expect.poll(() => visible('#preview')).toBe(true);
+  await expect.poll(() => visible('#program-run')).toBe(true);
+  await page.locator('#program-run').click();
+  await expect(page.locator('#program-status')).toContainText('실행 중');
+  await expect.poll(() => visible('#preview')).toBe(true);
+  await expect.poll(() => visible('#program-run')).toBe(true);
+  expect(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth)).toBe(true);
 });

@@ -9,7 +9,8 @@ import zipfile
 ROOT = Path(__file__).resolve().parents[1]
 SOURCE = ROOT / "firmware" / "Keyring"
 DESTINATION = ROOT / "downloads" / "Keyring-Arduino.zip"
-FILES = ("Keyring.ino", "character_renderer.h", "keyring_core.h", "program_core.h", "program_codec.h", "web_assets.h")
+FILES = ("Keyring.ino", "character_renderer.h", "keyring_core.h", "program_core.h", "program_codec.h",
+         "weather_renderer.h", "weather_glyphs.h", "weather_font_license.txt", "web_assets.h")
 TIMESTAMP = (1980, 1, 1, 0, 0, 0)
 
 

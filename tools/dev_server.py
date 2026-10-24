@@ -227,7 +227,7 @@ class MockDevice:
                 status = "fresh"
         return {"character": self.character, "emotion": self.emotion, "view": self.view,
                 "ssid": "개발용 모의 키링", "simulated": True, "oled": True, "storage": True,
-                "firmware": "2.0.0-mock", "capabilities": {"blockPrograms": True},
+                "firmware": "2.1.0-mock", "capabilities": {"blockPrograms": True},
                 "clock": {"trusted": now is not None, "now": now},
                 "weather": self.weather, "weatherStatus": status,
                 "program": self.program, "programRunning": self.program_running,

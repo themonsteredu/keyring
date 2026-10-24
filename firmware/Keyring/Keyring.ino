@@ -15,6 +15,7 @@
 
 #include "keyring_core.h"
 #include "character_renderer.h"
+#include "weather_renderer.h"
 #include "program_core.h"
 #include "program_codec.h"
 #include "web_assets.h"
@@ -230,7 +231,7 @@ static void stateRequest() {
   document["ssid"] = accessPointName;
   document["oled"] = oledReady;
   document["storage"] = storageReady;
-  document["firmware"] = "2.0.0";
+  document["firmware"] = "2.1.0";
   document["capabilities"]["blockPrograms"] = true;
   document["programRunning"] = programMachine.running();
   if (haveProgram) keyring_program::appendProgram(document["program"].to<JsonObject>(), savedProgram);
@@ -367,91 +368,11 @@ static void assetRequest() {
   server.send(302, "text/plain", "Open http://192.168.4.1/");
 }
 
-static void printKst(uint32_t epoch, char* output, size_t length, const char* format) {
-  const time_t shifted = static_cast<time_t>(epoch) + 9 * 3600;
-  struct tm value;
-  gmtime_r(&shifted, &value);
-  strftime(output, length, format, &value);
-}
-
-static void drawIcon(int x, int y, keyring_core::Icon icon, bool small) {
-  const int r = small ? 3 : 8;
-  const int cx = x + (small ? 5 : 14);
-  const int cy = y + (small ? 5 : 14);
-  if (icon == keyring_core::Icon::Sun) {
-    display.drawCircle(cx, cy, r, SSD1306_WHITE);
-    for (int a = 0; a < 8; ++a) {
-      const float angle = a * PI / 4;
-      display.drawLine(cx + cosf(angle) * (r + 2), cy + sinf(angle) * (r + 2),
-                       cx + cosf(angle) * (r + 4), cy + sinf(angle) * (r + 4), SSD1306_WHITE);
-    }
-    return;
-  }
-  const int w = small ? 10 : 29;
-  const int h = small ? 5 : 12;
-  display.fillRoundRect(x, y + (small ? 2 : 5), w, h, small ? 2 : 5, SSD1306_WHITE);
-  display.fillCircle(x + w / 3, y + (small ? 3 : 7), small ? 3 : 7, SSD1306_WHITE);
-  display.fillCircle(x + 2 * w / 3, y + (small ? 2 : 4), small ? 2 : 6, SSD1306_WHITE);
-  const int bottom = y + (small ? 9 : 23);
-  if (icon == keyring_core::Icon::Rain) {
-    display.drawLine(x + 2, bottom, x, bottom + (small ? 2 : 5), SSD1306_WHITE);
-    display.drawLine(x + w / 2, bottom, x + w / 2 - 2, bottom + (small ? 2 : 5), SSD1306_WHITE);
-    display.drawLine(x + w - 2, bottom, x + w - 4, bottom + (small ? 2 : 5), SSD1306_WHITE);
-  } else if (icon == keyring_core::Icon::Snow) {
-    display.drawFastHLine(x + w / 2 - 2, bottom + 1, 5, SSD1306_WHITE);
-    display.drawFastVLine(x + w / 2, bottom - 1, 5, SSD1306_WHITE);
-    if (!small) {
-      display.drawLine(x + w / 2 - 2, bottom - 1, x + w / 2 + 2, bottom + 3, SSD1306_WHITE);
-      display.drawLine(x + w / 2 + 2, bottom - 1, x + w / 2 - 2, bottom + 3, SSD1306_WHITE);
-    }
-  } else if (icon == keyring_core::Icon::Storm) {
-    display.drawLine(x + w / 2 + 2, bottom - 2, x + w / 2 - 2, bottom + 2, SSD1306_WHITE);
-    display.drawLine(x + w / 2 - 2, bottom + 2, x + w / 2 + 2, bottom + 2, SSD1306_WHITE);
-    display.drawLine(x + w / 2 + 2, bottom + 2, x + w / 2 - 2, bottom + 6, SSD1306_WHITE);
-  } else if (icon == keyring_core::Icon::Fog) {
-    display.drawFastHLine(x, bottom, w, SSD1306_WHITE);
-    display.drawFastHLine(x + 2, bottom + 3, w - 4, SSD1306_WHITE);
-  }
-}
-
 static void weatherFrame(uint64_t nowMs, uint8_t page) {
-  display.clearDisplay();  // RAM only; never send a cleared frame to the OLED.
-  display.setTextColor(SSD1306_WHITE);
-  display.setTextSize(1);
-  display.setTextWrap(false);
-  display.setCursor(0, 0);
-  display.print(keyring_core::oledStatus(keyring_core::weatherStatus(haveWeather ? &weather : nullptr, deviceClock, nowMs)));
-  if (!haveWeather) {
-    display.setCursor(0, 22); display.print("Connect phone Wi-Fi");
-    display.setCursor(0, 34); display.print("192.168.4.1");
-    display.setCursor(0, 48); display.print("Import weather JSON");
-    return;
-  }
-  display.setCursor(104, 0);
-  if (page) { display.print(page); display.print("/4"); }
-  else display.print("NOW");
-  char timestamp[24];
-  printKst(weather.fetchedAt, timestamp, sizeof(timestamp), "UPD%y/%m/%d %H:%MK");
-  display.setCursor(0, 10); display.print(timestamp);
-  if (!page) {
-    drawIcon(4, 26, keyring_core::weatherIcon(weather.current.code), false);
-    display.setTextSize(2);
-    display.setCursor(43, 28); display.print(weather.current.temperature, 1); display.print('C');
-    display.setTextSize(1);
-    printKst(weather.current.time, timestamp, sizeof(timestamp), "AT %m/%d %H:%M KST");
-    display.setCursor(0, 55); display.print(timestamp);
-    return;
-  }
-  const size_t start = static_cast<size_t>(page - 1) * 6;
-  for (size_t cell = 0; cell < 6; ++cell) {
-    const keyring_core::ForecastPoint& point = weather.hourly[start + cell];
-    const int x = (cell % 2) * 64;
-    const int y = 22 + (cell / 2) * 14;
-    printKst(point.time, timestamp, sizeof(timestamp), "%H");
-    display.setCursor(x, y); display.print(timestamp);
-    display.setCursor(x + 14, y); display.print(static_cast<int>(roundf(point.temperature))); display.print('C');
-    drawIcon(x + 48, y - 1, keyring_core::weatherIcon(point.code), true);
-  }
+  keyring::renderWeather(characterFrame, haveWeather ? &weather : nullptr,
+      keyring_core::weatherStatus(haveWeather ? &weather : nullptr, deviceClock, nowMs),
+      page, static_cast<uint8_t>((nowMs / kFrameMs) % keyring::kAnimationFrames));
+  memcpy(display.getBuffer(), characterFrame.data, sizeof(lastDisplay));
 }
 
 static void updateDisplay(uint64_t nowMs) {

@@ -46,7 +46,15 @@ int main() {
         keyring::renderCharacter(other, character, emotion, phase);
         assert(memcmp(b.data, other.data, sizeof(b.data)) == 0);
         const int pixels = whitePixels(b);
-        assert(pixels > 250 && pixels < 2500);
+        // A milk-carton face is bright features on black, not a filled animal.
+        assert(pixels >= 50 && pixels < 1000);
+        for (int y = 0; y < 64; ++y)
+          for (int x = 0; x < 128; ++x)
+            if (x < 8 || x >= 120 || y < 6 || y >= 58)
+              assert(!b.get(x, y));
+        // The space between the eyes stays black; there is no filled head.
+        for (int y = 16; y < 34; ++y)
+          for (int x = 56; x < 72; ++x) assert(!b.get(x, y));
         assert(guarded.before == 0x51f00d51 && guarded.after == 0xa17e1234);
         animation.insert(hash(b));
         if (phase == 0) identities.insert(hash(b));
@@ -57,19 +65,24 @@ int main() {
       keyring::renderCharacter(open, character, emotion, 0);
       keyring::renderCharacter(closed, character, emotion, 14);
       assert(hash(open) != hash(closed));
-      // Dark lids cut into the white plush face across all nine eye pixels.
-      const int eyeY = character == 3 ? 26 : 34;
-      for (int x = 49; x <= 57; ++x) assert(!closed.get(x, eyeY));
-      for (int x = 71; x <= 79; ++x) assert(!closed.get(x, eyeY));
-      // The lids must remain within a lit face, not disappear into background.
-      assert(closed.get(53, eyeY - 3) && closed.get(75, eyeY - 3));
-      assert(closed.get(53, eyeY + 4) && closed.get(75, eyeY + 4));
+      // Closed lids remain bright and visible on black. Partial closure on
+      // each side of the blink avoids jumping straight from tall eyes to lines.
+      const keyring::character_detail::FaceStyle face =
+          keyring::character_detail::styleFor(character);
+      const int left = 64 - face.spacing;
+      const int right = 64 + face.spacing;
+      assert(closed.get(left, 28) && closed.get(right, 28));
+      assert(!closed.get(left, 22) && !closed.get(right, 22));
+      keyring::FrameBuffer half;
+      keyring::renderCharacter(half, character, emotion, 13);
+      assert(hash(half) != hash(closed));
+      assert(half.get(left, 25) && half.get(right, 25));
     }
   }
-  assert(identities.size() == 30);  // Characters and expressions stay distinct.
+  assert(identities.size() == 30);  // Eye styles and expressions stay distinct.
   keyring::FrameBuffer fallback, wrapped;
   keyring::renderCharacter(fallback, 255, 255, 0);
   keyring::renderCharacter(wrapped, 4, 0, 32);
   assert(memcmp(fallback.data, wrapped.data, sizeof(fallback.data)) == 0);
-  printf("Renderer passed: %u frames, 30 unique selections, blink/animation/layout/bounds.\n", checked);
+  printf("Renderer passed: %u frames, 30 unique face-only selections, bright blink/animation/black margins/bounds.\n", checked);
 }

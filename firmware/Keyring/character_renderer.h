@@ -96,146 +96,163 @@ struct FrameBuffer {
 
 namespace character_detail {
 
+// Only facial features are drawn: the real milk-carton shell is the character.
+// Keeping the black around the eyes is intentional; do not add a head or body.
 inline void boldLine(FrameBuffer& b, int x0, int y0, int x1, int y1,
                      bool on = true) {
   b.line(x0, y0, x1, y1, on);
   b.line(x0, y0 + 1, x1, y1 + 1, on);
 }
 
-inline void heart(FrameBuffer& b, int x, int y, int scale, bool on = true) {
-  b.ellipse(x - 2 * scale, y, 2 * scale, 2 * scale, on);
-  b.ellipse(x + 2 * scale, y, 2 * scale, 2 * scale, on);
-  b.triangle(x - 4 * scale, y, x + 4 * scale, y,
-             x, y + 5 * scale, on);
+inline void pill(FrameBuffer& b, int cx, int cy, int width, int height) {
+  const int rx = width / 2;
+  const int ry = rx < height / 2 ? rx : height / 2;
+  if (height <= width) {
+    b.ellipse(cx, cy, rx, height / 2);
+    return;
+  }
+  const int y0 = cy - height / 2;
+  b.rectangle(cx - rx, y0 + ry, width + 1, height - ry * 2 + 1);
+  b.ellipse(cx, y0 + ry, rx, ry);
+  b.ellipse(cx, y0 + height - ry, rx, ry);
+}
+
+inline void arc(FrameBuffer& b, int cx, int cy, int halfWidth, int depth,
+                int thickness = 2) {
+  // Positive depth makes a U; negative depth makes a smiling closed eye.
+  for (int x = -halfWidth; x <= halfWidth; ++x) {
+    const int dy = depth * (halfWidth * halfWidth - x * x) /
+                   (halfWidth * halfWidth);
+    for (int row = 0; row < thickness; ++row) b.pixel(cx + x, cy + dy + row);
+  }
+}
+
+inline void heart(FrameBuffer& b, int cx, int cy, int scale = 1) {
+  static const uint16_t rows[] = {
+      0x0cc, 0x1fe, 0x3ff, 0x3ff, 0x1fe, 0x0fc, 0x078, 0x030};
+  const int x0 = cx - 5 * scale;
+  const int y0 = cy - 4 * scale;
+  for (int y = 0; y < 8; ++y)
+    for (int x = 0; x < 10; ++x)
+      if (rows[y] & (1u << (9 - x)))
+        b.rectangle(x0 + x * scale, y0 + y * scale, scale, scale);
 }
 
 inline void sparkle(FrameBuffer& b, int x, int y, int size) {
   b.line(x - size, y, x + size, y);
   b.line(x, y - size, x, y + size);
-  b.pixel(x - 1, y - 1);
-  b.pixel(x + 1, y + 1);
+  b.pixel(x - 1, y - 1); b.pixel(x + 1, y + 1);
 }
 
-inline void smile(FrameBuffer& b, int x, int y, int size, bool on = true) {
-  // Rounded, two-pixel smile; the top stays open even on the physical OLED.
-  for (int i = -size; i <= size; ++i) {
-    const int dy = size > 0 ? (size * size - i * i) / (size + 1) : 0;
-    b.pixel(x + i, y + dy, on);
-    b.pixel(x + i, y + dy + 1, on);
+struct FaceStyle {
+  int spacing;
+  int width;
+  int height;
+  int smileWidth;
+};
+
+inline FaceStyle styleFor(uint8_t style) {
+  // Saved IDs stay compatible with older firmware. Their visible choices are
+  // now soft, twinkly, smiling, bean and square eyes, rather than animals.
+  static const FaceStyle styles[] = {
+      {24, 10, 16, 8}, {25, 12, 18, 9}, {23, 12, 12, 7},
+      {21, 8, 12, 6}, {26, 10, 12, 9}};
+  return styles[style];
+}
+
+inline void openEye(FrameBuffer& b, int x, int y, uint8_t style,
+                    const FaceStyle& face) {
+  if (style == 2) {
+    arc(b, x, y + 3, face.width / 2, -5, 3);
+  } else if (style == 4) {
+    b.rectangle(x - face.width / 2, y - face.height / 2,
+                face.width, face.height);
+  } else {
+    pill(b, x, y, face.width, face.height);
+    if (style == 1) {
+      // Two little dark glints give the tall eyes a soft, glassy expression.
+      b.rectangle(x - 3, y - 6, 3, 4, false);
+      b.pixel(x + 3, y + 4, false);
+    } else if (style == 3) {
+      b.pixel(x - 3, y - 4, false);
+      b.pixel(x + 3, y + 4, false);
+    }
   }
 }
 
-inline void sleepyZ(FrameBuffer& b, int x, int y, int size) {
-  boldLine(b, x, y, x + size, y);
-  boldLine(b, x + size, y, x, y + size);
-  boldLine(b, x, y + size, x + size, y + size);
-}
-
-inline void eyes(FrameBuffer& b, int cx, int cy, uint8_t emotion,
-                 bool blinking) {
-  const int left = cx - 11;
-  const int right = cx + 11;
-  // White plush silhouettes carry dark eyes. Never paint a separate blank
-  // display frame: these cuts are made only in the completed RAM framebuffer.
-  if (blinking) {
-    boldLine(b, left - 4, cy + 1, left + 4, cy + 1, false);
-    boldLine(b, right - 4, cy + 1, right + 4, cy + 1, false);
+inline void eye(FrameBuffer& b, int x, int y, uint8_t style,
+                const FaceStyle& face, uint8_t emotion, uint8_t phase) {
+  if (phase == 14) {
+    // The lid is a bright, clearly visible stroke on the black display.
+    b.rectangle(x - face.width / 2, y + 2, face.width + 1, 2);
+    return;
+  }
+  if (phase == 13 || phase == 15) {
+    b.ellipse(x, y + 1, face.width / 2, 3);
     return;
   }
   if (emotion == 0) {
-    for (int x = left; x <= right; x += 22) {
-      b.ellipse(x, cy, 3, 5, false);
-      b.rectangle(x - 1, cy - 3, 2, 2);
-    }
+    openEye(b, x, y, style, face);
   } else if (emotion == 1) {
-    for (int x = left; x <= right; x += 22) {
-      b.ellipse(x, cy - 1, 4, 7, false);
-      b.rectangle(x - 1, cy - 5, 2, 3);
-      b.pixel(x + 2, cy + 2);
-    }
+    arc(b, x, y + 3, face.width / 2 + 1, -6, 3);
   } else if (emotion == 2) {
-    boldLine(b, left - 5, cy, left + 4, cy + 1, false);
-    boldLine(b, right - 4, cy + 1, right + 5, cy, false);
-    b.pixel(left - 5, cy + 2, false);
-    b.pixel(right + 5, cy + 2, false);
+    arc(b, x, y + 1, face.width / 2 + 1, 3, 2);
+    b.pixel(x - face.width / 2 - 1, y + 1);
   } else if (emotion == 3) {
-    for (int x = left; x <= right; x += 22) {
-      b.ellipse(x, cy + 1, 3, 5, false);
-      b.rectangle(x - 1, cy - 1, 2, 2);
-    }
-    boldLine(b, left - 5, cy - 7, left + 3, cy - 10, false);
-    boldLine(b, right - 3, cy - 10, right + 5, cy - 7, false);
+    pill(b, x, y + 1, face.width, face.height - 2);
+    b.rectangle(x - 2, y - 3, 2, 3, false);
+    const bool left = x < 64;
+    boldLine(b, x - 6, y - (left ? 9 : 12),
+             x + 6, y - (left ? 12 : 9));
   } else if (emotion == 4) {
-    b.triangle(left - 5, cy - 2, left + 4, cy + 1,
-               left - 3, cy + 5, false);
-    b.triangle(right - 4, cy + 1, right + 5, cy - 2,
-               right + 3, cy + 5, false);
-    boldLine(b, left - 6, cy - 7, left + 4, cy - 3, false);
-    boldLine(b, right - 4, cy - 3, right + 6, cy - 7, false);
+    b.ellipse(x, y + 2, face.width / 2, 6);
+    const bool left = x < 64;
+    // Tiny slanted brows and a pout read as grumpy rather than frightening.
+    for (int dx = -face.width / 2 - 1; dx <= face.width / 2 + 1; ++dx) {
+      const int cut = left ? dx / 2 : -dx / 2;
+      for (int dy = -7; dy <= cut - 1; ++dy) b.pixel(x + dx, y + dy, false);
+    }
+    boldLine(b, x - 7, y - (left ? 8 : 3),
+             x + 7, y - (left ? 3 : 8));
   } else {
-    heart(b, left, cy - 2, 1, false);
-    heart(b, right, cy - 2, 1, false);
+    heart(b, x, y, 2);
   }
 }
 
-inline void face(FrameBuffer& b, int cx, int cy, uint8_t emotion,
-                 uint8_t phase, uint8_t character) {
-  eyes(b, cx, cy - 2, emotion, phase == 14 || phase == 15);
-  if (emotion == 0 || emotion == 5) smile(b, cx, cy + 8, 7, false);
-  else if (emotion == 1) {
-    b.ellipse(cx, cy + 11, 6, 6, false);
-    b.rectangle(cx - 2, cy + 14, 5, 2);
+inline void mouth(FrameBuffer& b, int cx, int cy, uint8_t style,
+                  const FaceStyle& face, uint8_t emotion, uint8_t phase) {
+  if (emotion == 0 || emotion == 5) {
+    if (style == 4) {
+      // The little stepped smile echoes the photo of the actual milk carton.
+      b.rectangle(cx - 10, cy, 4, 3);
+      b.rectangle(cx + 6, cy, 4, 3);
+      b.rectangle(cx - 7, cy + 3, 14, 3);
+    } else if (style == 1) {
+      arc(b, cx - 4, cy + 1, 4, 3);
+      arc(b, cx + 4, cy + 1, 4, 3);
+    } else {
+      arc(b, cx, cy, face.smileWidth, 5);
+    }
+  } else if (emotion == 1) {
+    b.ellipse(cx, cy + 2, face.smileWidth - 1, 7);
+    b.rectangle(cx - face.smileWidth, cy - 7, face.smileWidth * 2 + 1, 6, false);
+    b.rectangle(cx - 2, cy + 4, 5, 2, false);
   } else if (emotion == 2) {
-    b.ellipse(cx, cy + 10, 3, 2, false);
-    if (phase / 8 % 2) b.pixel(cx, cy + 13, false);
-  }
-  else if (emotion == 3) {
-    boldLine(b, cx - 5, cy + 12, cx, cy + 9, false);
-    boldLine(b, cx, cy + 9, cx + 5, cy + 12, false);
-    const int tearY = cy + 5 + static_cast<int>((phase / 4) % 3);
-    b.triangle(cx + 16, tearY - 3, cx + 14, tearY + 1,
-               cx + 18, tearY + 1, false);
-    b.ellipse(cx + 16, tearY + 2, 2, 2, false);
-    b.pixel(cx + 16, tearY + 2);
+    const int width = phase >= 20 && phase < 24 ? 4 : 3;
+    b.outline(cx, cy + 3, width, 3, 1);
+  } else if (emotion == 3) {
+    arc(b, cx, cy + 5, face.smileWidth - 2, -3);
   } else {
-    boldLine(b, cx - 5, cy + 12, cx, cy + 10, false);
-    boldLine(b, cx, cy + 10, cx + 5, cy + 12, false);
-  }
-  if (emotion == 0 || emotion == 1 || emotion == 5) {
-    b.line(cx - 20, cy + 5, cx - 18, cy + 7, false);
-    b.line(cx - 17, cy + 5, cx - 15, cy + 7, false);
-    b.line(cx + 15, cy + 7, cx + 17, cy + 5, false);
-    b.line(cx + 18, cy + 7, cx + 20, cy + 5, false);
-  }
-  if (character == 1) {
-    b.triangle(cx - 2, cy + 3, cx + 2, cy + 3, cx, cy + 5, false);
-    // Dark inner whiskers continue as bright tips outside the white face.
-    b.line(cx - 26, cy + 3, cx - 19, cy + 4, false);
-    b.line(cx - 26, cy + 8, cx - 20, cy + 7, false);
-    b.line(cx + 19, cy + 4, cx + 26, cy + 3, false);
-    b.line(cx + 20, cy + 7, cx + 26, cy + 8, false);
-    boldLine(b, cx - 34, cy + 1, cx - 29, cy + 2);
-    boldLine(b, cx + 29, cy + 2, cx + 34, cy + 1);
-    b.line(cx - 34, cy + 8, cx - 29, cy + 7);
-    b.line(cx + 29, cy + 7, cx + 34, cy + 8);
-  } else if (character == 2) {
-    b.ellipse(cx, cy + 3, 4, 2, false);
-    b.pixel(cx - 1, cy + 2);
-  } else if (character == 3) {
-    b.pixel(cx - 3, cy + 4, false);
-    b.pixel(cx + 3, cy + 4, false);
-  } else if (character == 0) {
-    b.triangle(cx - 2, cy + 3, cx + 2, cy + 3, cx, cy + 5, false);
-  } else if (character == 4 && emotion == 1) {
-    // Two tiny friendly teeth make the monster's open smile its own.
-    b.triangle(cx - 4, cy + 7, cx - 1, cy + 7, cx - 3, cy + 10);
-    b.triangle(cx + 1, cy + 7, cx + 4, cy + 7, cx + 3, cy + 10);
+    b.rectangle(cx - face.smileWidth / 2, cy + 2,
+                face.smileWidth + 1, 2);
+    b.pixel(cx - face.smileWidth / 2, cy + 4);
+    b.pixel(cx + face.smileWidth / 2, cy + 4);
   }
 }
 
 }  // namespace character_detail
 
-// 0 rabbit, 1 cat, 2 bear, 3 turtle, 4 monster.
+// Stable saved IDs: 0 soft, 1 twinkly, 2 smiling, 3 bean, 4 square eyes.
 // 0 happy, 1 excited, 2 sleepy, 3 sad, 4 angry, 5 love.
 inline void renderCharacter(FrameBuffer& b, uint8_t character, uint8_t emotion,
                             uint8_t phase) {
@@ -244,110 +261,46 @@ inline void renderCharacter(FrameBuffer& b, uint8_t character, uint8_t emotion,
   if (character >= kCharacterCount) character = 4;
   if (emotion >= kEmotionCount) emotion = 0;
   phase %= kAnimationFrames;
+  const FaceStyle face = styleFor(character);
   const int bob = (phase >= 8 && phase < 12) ||
                   (emotion == 1 && phase >= 24 && phase < 28) ? -1 : 0;
-  const int sway = phase >= 20 && phase < 28 ? 1 : 0;
-  const int cx = 64 + sway;
-  int cy = 35 + bob;
+  const int glance = phase >= 20 && phase < 28 ? 1 : 0;
+  const int cx = 64 + glance;
+  const int cy = 26 + bob;
+  eye(b, cx - face.spacing, cy, character, face, emotion, phase);
+  eye(b, cx + face.spacing, cy, character, face, emotion, phase);
+  mouth(b, cx, 44 + bob, character, face, emotion, phase);
 
-  if (character == 0) {
-    const int twitch = phase >= 24 && phase < 27 ? 2 : 0;
-    b.ellipse(cx - 14 - twitch, 14 + bob, 7, 13);
-    b.ellipse(cx + 14 + twitch, 14 + bob, 7, 13);
-    b.ellipse(cx - 14 - twitch, 13 + bob, 3, 8, false);
-    b.ellipse(cx + 14 + twitch, 13 + bob, 3, 8, false);
-    b.ellipse(cx - 14, 59 + bob, 7, 3);
-    b.ellipse(cx + 14, 59 + bob, 7, 3);
-    b.ellipse(cx, 39 + bob, 28, 21);
-    // Small front paws give the bunny a plush shape instead of a floating head.
-    b.line(cx - 17, 54 + bob, cx - 14, 56 + bob, false);
-    b.line(cx + 14, 56 + bob, cx + 17, 54 + bob, false);
-  } else if (character == 1) {
-    const int flick = static_cast<int>(phase / 8 % 2);
-    boldLine(b, cx + 25, 56 + bob, cx + 37, 56 + bob);
-    boldLine(b, cx + 37, 56 + bob, cx + 43, 50 + bob);
-    boldLine(b, cx + 43, 50 + bob, cx + 43, 40 + bob - flick);
-    boldLine(b, cx + 43, 40 + bob - flick, cx + 39, 36 + bob - flick);
-    boldLine(b, cx + 39, 36 + bob - flick, cx + 35, 38 + bob - flick);
-    b.triangle(cx - 28, 31 + bob, cx - 24, 5 + bob, cx - 7, 24 + bob);
-    b.triangle(cx + 7, 24 + bob, cx + 24, 5 + bob, cx + 28, 31 + bob);
-    b.triangle(cx - 24, 24 + bob, cx - 22, 12 + bob, cx - 13, 24 + bob, false);
-    b.triangle(cx + 13, 24 + bob, cx + 22, 12 + bob, cx + 24, 24 + bob, false);
-    b.ellipse(cx - 15, 59 + bob, 7, 3);
-    b.ellipse(cx + 15, 59 + bob, 7, 3);
-    b.ellipse(cx, 39 + bob, 29, 21);
-    b.line(cx - 17, 55 + bob, cx - 15, 57 + bob, false);
-    b.line(cx + 15, 57 + bob, cx + 17, 55 + bob, false);
-  } else if (character == 2) {
-    b.ellipse(cx - 22, 15 + bob, 9, 9);
-    b.ellipse(cx + 22, 15 + bob, 9, 9);
-    b.ellipse(cx - 22, 15 + bob, 4, 4, false);
-    b.ellipse(cx + 22, 15 + bob, 4, 4, false);
-    b.ellipse(cx - 18, 59 + bob, 7, 3);
-    b.ellipse(cx + 18, 59 + bob, 7, 3);
-    if (phase >= 24 && phase < 28) {
-      b.ellipse(cx - 34, 35 + bob, 5, 7);
-      b.line(cx - 34, 32 + bob, cx - 34, 35 + bob, false);
-    }
-    b.ellipse(cx, 38 + bob, 28, 21);
-    b.line(cx - 21, 54 + bob, cx - 18, 57 + bob, false);
-    b.line(cx + 18, 57 + bob, cx + 21, 54 + bob, false);
-  } else if (character == 3) {
-    b.outline(cx, 48 + bob, 37, 14, 2);
-    b.line(cx - 17, 50 + bob, cx - 28, 56 + bob);
-    b.line(cx + 17, 50 + bob, cx + 28, 56 + bob);
-    b.line(cx - 11, 53 + bob, cx + 11, 53 + bob);
-    b.line(cx - 11, 53 + bob, cx - 16, 58 + bob);
-    b.line(cx + 11, 53 + bob, cx + 16, 58 + bob);
-    b.line(cx - 16, 58 + bob, cx - 11, 61 + bob);
-    b.line(cx + 16, 58 + bob, cx + 11, 61 + bob);
-    const int step = phase >= 16 && phase < 24 ? 1 : 0;
-    b.ellipse(cx - 28, 58 + bob - step, 7, 4);
-    b.ellipse(cx + 28, 58 + bob + step, 7, 4);
-    b.ellipse(cx - 30, 35 + bob, 8, 4);
-    b.ellipse(cx + 30, 35 + bob, 8, 4);
-    b.ellipse(cx, 30 + bob, 27, 23, false);
-    b.ellipse(cx, 30 + bob, 25, 21);
-    cy = 27 + bob;
-  } else {
-    const int twitch = phase >= 24 && phase < 28 ? 2 : 0;
-    b.triangle(cx - 24, 26 + bob, cx - 23 - twitch, 5 + bob, cx - 8, 18 + bob);
-    b.triangle(cx + 8, 18 + bob, cx + 23 + twitch, 5 + bob, cx + 24, 26 + bob);
-    b.line(cx - 24 - twitch, 11 + bob, cx - 17, 12 + bob, false);
-    b.line(cx + 17, 12 + bob, cx + 24 + twitch, 11 + bob, false);
-    const int wave = phase >= 24 && phase < 28 ? -5 : 0;
-    b.ellipse(cx - 32, 42 + bob + wave, 4, 7);
-    b.ellipse(cx + 32, 42 + bob, 4, 7);
-    b.ellipse(cx - 15, 59 + bob, 7, 3);
-    b.ellipse(cx + 15, 59 + bob, 7, 3);
-    b.ellipse(cx, 38 + bob, 28, 21);
-    b.triangle(cx - 3, 20 + bob, cx + 3, 20 + bob, cx, 24 + bob, false);
-    b.line(cx - 33, 40 + bob + wave, cx - 31, 42 + bob + wave, false);
-    b.line(cx + 31, 42 + bob, cx + 33, 40 + bob, false);
+  // Small cheeks and reaction marks never form an enclosing animal silhouette.
+  if (emotion == 0 || emotion == 1 || emotion == 5) {
+    const int cheekY = 38 + bob;
+    b.rectangle(cx - face.spacing - 10, cheekY, 3, 2);
+    b.rectangle(cx + face.spacing + 7, cheekY, 3, 2);
   }
-
-  face(b, cx, cy, emotion, phase, character);
-  // Peripheral expression animations leave the face large and unobstructed.
   if (emotion == 1) {
-    sparkle(b, 15, 22 + static_cast<int>(phase / 8 % 2), 3);
-    if (phase / 4 % 2 == 0) sparkle(b, 111, 11, 4);
+    sparkle(b, 14, 17 + static_cast<int>(phase / 8 % 2), 3);
+    if (phase / 4 % 2 == 0) sparkle(b, 113, 13, 3);
   } else if (emotion == 2) {
-    sleepyZ(b, 99, 22 - static_cast<int>(phase / 8), 5);
-    if (phase >= 16) sleepyZ(b, 109, 10 - static_cast<int>(phase / 16), 7);
+    // A floating sleep bubble replaces the old English Z letters.
+    const int lift = static_cast<int>((phase / 8) % 4);
+    b.outline(109, 20 - lift * 2, 2 + lift / 2, 2 + lift / 2, 1);
+    b.pixel(103, 25 - lift);
+    b.pixel(106, 23 - lift);
+  } else if (emotion == 3) {
+    const int tearY = 37 + static_cast<int>((phase / 4) % 3);
+    b.triangle(cx + face.spacing + 10, tearY - 4,
+               cx + face.spacing + 7, tearY + 1,
+               cx + face.spacing + 13, tearY + 1);
+    b.ellipse(cx + face.spacing + 10, tearY + 2, 3, 3);
   } else if (emotion == 4) {
-    const int pulse = phase / 4 % 2;
-    boldLine(b, 104 - pulse, 18, 104 - pulse, 21);
-    boldLine(b, 101 - pulse, 21, 104 - pulse, 21);
-    boldLine(b, 110 + pulse, 18, 110 + pulse, 21);
-    boldLine(b, 110 + pulse, 21, 113 + pulse, 21);
-    boldLine(b, 104 - pulse, 26, 104 - pulse, 29);
-    boldLine(b, 101 - pulse, 26, 104 - pulse, 26);
-    boldLine(b, 110 + pulse, 26, 113 + pulse, 26);
-    boldLine(b, 110 + pulse, 26, 110 + pulse, 29);
+    // Two tiny puffs make the angry face a mild, playful pout.
+    const int puff = static_cast<int>(phase / 8 % 2);
+    b.outline(15 - puff, 36, 3, 2, 1);
+    b.outline(113 + puff, 36, 3, 2, 1);
   } else if (emotion == 5) {
     const int lift = static_cast<int>((phase / 4) % 4);
-    heart(b, 16, 26 - lift * 2, phase / 8 % 2 == 0 ? 1 : 2);
-    heart(b, 111, 18 - lift, 1);
+    heart(b, 13, 17 - lift * 2, 1);
+    if (phase / 8 % 2 == 0) heart(b, 113, 46 - lift, 1);
   }
 }
 

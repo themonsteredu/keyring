@@ -10,10 +10,27 @@ async function ready(page, tab = 'customize') {
   await expect(page.locator('#atlas-error')).toBeHidden();
   await expect.poll(() => page.locator('#preview').evaluate(c => {
     const data = c.getContext('2d').getImageData(0, 0, 128, 64).data;
-    return data.some((v, i) => i % 4 === 0 && v === 210);
+    return data.some((v, i) => i % 4 === 0 && v === 255);
   })).toBeTruthy();
-  await page.locator(`#tab-${tab}`).click();
+  if (tab) await page.locator(`#tab-${tab}`).click();
 }
+
+test('opens with face styles and shows the same OLED polarity in the choices', async ({ page }) => {
+  await ready(page, null);
+  await expect(page.locator('#tab-customize')).toHaveAttribute('aria-selected', 'true');
+  await expect(page.locator('#characters .choice strong')).toHaveText(['말랑눈', '초롱눈', '웃음눈', '콩알눈', '네모눈']);
+  await expect(page.locator('#preview-name')).toHaveText('행복한 말랑눈');
+  await page.locator('#characters .choice:has(input[value=monster])').click();
+  await page.locator('#emotions .choice:has(input[value=love])').click();
+  await expect(page.locator('#preview-name')).toHaveText('사랑에 빠진 네모눈');
+  const palettes = await page.locator('#characters canvas, #emotions canvas').evaluateAll(canvases => canvases.map(c => {
+    const pixels = c.getContext('2d').getImageData(0, 0, 128, 64).data;
+    const colors = new Set();
+    for (let i = 0; i < pixels.length; i += 4) colors.add(Array.from(pixels.slice(i, i + 4)).join(','));
+    return [...colors].sort();
+  }));
+  for (const palette of palettes) expect(palette).toEqual(['255,255,255,255', '5,11,18,255']);
+});
 
 test('all 30 previews exactly match firmware framebuffer pixels', async ({ page }) => {
   const errors = [];
@@ -26,20 +43,25 @@ test('all 30 previews exactly match firmware framebuffer pixels', async ({ page 
   for (const character of atlas.characters) for (const emotion of atlas.emotions) {
     await page.locator(`#characters .choice:has(input[value=${character}])`).click();
     await page.locator(`#emotions .choice:has(input[value=${emotion}])`).click();
-    const encoded = await page.locator('#preview').evaluate(c => {
+    const frame = await page.locator('#preview').evaluate(c => {
       const pixels = c.getContext('2d').getImageData(0, 0, 128, 64).data;
       const packed = new Uint8Array(1024);
+      const colors = new Set();
       for (let y = 0; y < 64; y++) for (let x = 0; x < 128; x++) {
-        if (pixels[(y * 128 + x) * 4] >= 128) packed[x + (y >> 3) * 128] |= 1 << (y & 7);
+        const offset = (y * 128 + x) * 4;
+        colors.add(Array.from(pixels.slice(offset, offset + 4)).join(','));
+        if (pixels[offset] >= 128) packed[x + (y >> 3) * 128] |= 1 << (y & 7);
       }
-      return btoa(String.fromCharCode(...packed));
+      return { encoded: btoa(String.fromCharCode(...packed)), colors: [...colors].sort() };
     });
-    expect(atlas.data[`${character}:${emotion}`]).toContain(encoded);
+    expect(atlas.data[`${character}:${emotion}`]).toContain(frame.encoded);
+    expect(frame.colors).toEqual(['255,255,255,255', '5,11,18,255']);
   }
   expect(errors).toEqual([]);
 });
 
 test('apply acknowledges saved settings and restores after reload', async ({ page, request }) => {
+  await page.setViewportSize({ width: 1440, height: 1000 });
   await ready(page);
   await page.locator('#characters .choice:has(input[value=turtle])').click();
   await page.locator('#emotions .choice:has(input[value=love])').click();
@@ -49,11 +71,12 @@ test('apply acknowledges saved settings and restores after reload', async ({ pag
   const state = await request.get('/api/state').then(r => r.json());
   expect([state.character, state.emotion, state.view]).toEqual(['turtle', 'love', 'auto']);
   await page.reload();
-  await expect(page.locator('#preview-name')).toHaveText('사랑에 빠진 거북이');
+  await expect(page.locator('#preview-name')).toHaveText('사랑에 빠진 콩알눈');
   await expect(page.locator('#apply')).toBeDisabled();
 });
 
 test('save failure is visible and does not claim success', async ({ page, request }) => {
+  await page.setViewportSize({ width: 1440, height: 1000 });
   await ready(page);
   await page.route('**/api/settings', route => route.fulfill({ status: 503,
     contentType: 'application/json', body: JSON.stringify({ ok: false, error: 'storage_write_failed' }) }));
@@ -94,11 +117,11 @@ test('offline editor can preview and reports real API failure without fake weath
     contentType: 'application/json', body: JSON.stringify({ ok: false }) }));
   await page.route('https://api.open-meteo.com/**', route => route.abort('internetdisconnected'));
   await page.goto('/');
-  await expect(page.locator('#offline-note')).toBeVisible();
-  await expect(page.locator('#apply')).toBeDisabled();
+  await expect(page.locator('#connection-text')).toHaveText('미리보기 모드');
+  await expect(page.locator('#apply-mobile')).toBeDisabled();
   await page.locator('#tab-customize').click();
   await page.locator('#characters .choice:has(input[value=bear])').click();
-  await expect(page.locator('#preview-name')).toHaveText('행복한 곰');
+  await expect(page.locator('#preview-name')).toHaveText('행복한 웃음눈');
   await page.locator('#tab-weather').click();
   await page.locator('#fetch-weather').click();
   await expect(page.locator('#weather-action-state')).toContainText('날씨를 받지 못했어요');

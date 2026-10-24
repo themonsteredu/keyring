@@ -10,8 +10,8 @@ function defineBlocks(Blockly) {
   if (Blockly.Blocks.keyring_start) return;
   Blockly.defineBlocksWithJsonArray([
     { type: 'keyring_start', message0: '키링 시작할 때', nextStatement: null, style: 'start_blocks', hat: 'cap', tooltip: '이 블록 아래에 실행할 블록을 연결해요. 시작 블록은 하나만 필요해요.' },
-    { type: TYPES.character, message0: '캐릭터를 %1 로 바꾸기', args0: [{ type: 'field_dropdown', name: 'VALUE', options: [['토끼', 'rabbit'], ['고양이', 'cat'], ['곰', 'bear'], ['거북이', 'turtle'], ['몬스터', 'monster']] }], previousStatement: null, nextStatement: null, style: 'character_blocks', tooltip: '캐릭터 화면으로 바꾸고 이 친구를 보여 줘요.' },
-    { type: TYPES.emotion, message0: '표정을 %1 으로 바꾸기', args0: [{ type: 'field_dropdown', name: 'VALUE', options: [['행복', 'happy'], ['신남', 'excited'], ['졸림', 'sleepy'], ['슬픔', 'sad'], ['화남', 'angry'], ['사랑', 'love']] }], previousStatement: null, nextStatement: null, style: 'emotion_blocks', tooltip: '캐릭터가 어떤 마음인지 표정으로 표현해요.' },
+    { type: TYPES.character, message0: '눈 모양을 %1 으로 바꾸기', args0: [{ type: 'field_dropdown', name: 'VALUE', options: [['말랑눈', 'rabbit'], ['초롱눈', 'cat'], ['웃음눈', 'bear'], ['콩알눈', 'turtle'], ['네모눈', 'monster']] }], previousStatement: null, nextStatement: null, style: 'character_blocks', tooltip: '우유 키링의 눈 모양을 골라요. 눈과 입만 화면에 나타나요.' },
+    { type: TYPES.emotion, message0: '표정을 %1 으로 바꾸기', args0: [{ type: 'field_dropdown', name: 'VALUE', options: [['행복', 'happy'], ['신남', 'excited'], ['졸림', 'sleepy'], ['슬픔', 'sad'], ['화남', 'angry'], ['사랑', 'love']] }], previousStatement: null, nextStatement: null, style: 'emotion_blocks', tooltip: '눈과 입으로 오늘의 마음을 표현해요.' },
     { type: TYPES.wait, message0: '%1 초 기다리기', args0: [{ type: 'field_number', name: 'SECONDS', value: 1, min: 0.1, max: 30, precision: 0.001 }], previousStatement: null, nextStatement: null, style: 'time_blocks', tooltip: '0.1~30초 동안 지금 화면을 보여 줘요. 기다리는 동안에도 키링 설정 화면은 작동해요.' },
     { type: TYPES.weather, message0: '저장된 날씨 보여 주기', previousStatement: null, nextStatement: null, style: 'weather_blocks', tooltip: '키링에 담아 둔 날씨와 예보를 보여 줘요. 오래된 예보와 샘플은 따로 표시해요.' },
     { type: TYPES.repeat, message0: '%1 번 반복하기', args0: [{ type: 'field_number', name: 'COUNT', value: 3, min: 1, max: 20, precision: 1 }], message1: '%1', args1: [{ type: 'input_statement', name: 'DO' }], previousStatement: null, nextStatement: null, style: 'control_blocks', tooltip: '안에 끼운 블록을 1~20번 반복해요.' },
@@ -109,7 +109,7 @@ export async function initializeBlocks({ getDevice = () => null, getWeather = ()
   });
   const toolbox = { kind: 'categoryToolbox', contents: [
     { kind: 'category', name: '시작', categorystyle: 'start_category', contents: [{ kind: 'block', type: 'keyring_start' }] },
-    { kind: 'category', name: '캐릭터', categorystyle: 'character_category', contents: [{ kind: 'block', type: TYPES.character }, { kind: 'block', type: TYPES.emotion }] },
+    { kind: 'category', name: '눈·표정', categorystyle: 'character_category', contents: [{ kind: 'block', type: TYPES.character }, { kind: 'block', type: TYPES.emotion }] },
     { kind: 'category', name: '시간·반복', categorystyle: 'time_category', contents: [{ kind: 'block', type: TYPES.wait }, { kind: 'block', type: TYPES.repeat }] },
     { kind: 'category', name: '날씨', categorystyle: 'weather_category', contents: [{ kind: 'block', type: TYPES.weather }, { kind: 'block', type: TYPES.ifWeather }] },
   ] };
@@ -223,7 +223,7 @@ export async function initializeBlocks({ getDevice = () => null, getWeather = ()
         if (device.program) device.program.enabled = false;
       } catch (error) { message(`미리보기는 멈췄지만 키링 중지는 확인하지 못했어요. ${error.message}`, 'error'); controls(); return; }
     }
-    message('실행을 멈췄어요. 캐릭터 꾸미기에 저장된 모습으로 돌아가요.'); controls();
+    message('실행을 멈췄어요. 꾸미기에 저장된 표정으로 돌아가요.'); controls();
   }
   $('program-stop').addEventListener('click', () => stop());
   $('program-save').addEventListener('click', async () => {

@@ -29,8 +29,8 @@ export function validateProgram(input) {
       requireValue(object(block) && typeof block.type === 'string', '알 수 없는 블록이 있어요.');
       switch (block.type) {
         case 'character':
-          exactKeys(block, ['type', 'value'], '캐릭터 블록');
-          requireValue(CHARACTER_VALUES.includes(block.value), '키링이 아는 캐릭터를 골라 주세요.');
+          exactKeys(block, ['type', 'value'], '눈 모양 블록');
+          requireValue(CHARACTER_VALUES.includes(block.value), '키링이 아는 눈 모양을 골라 주세요.');
           return { type: 'character', value: block.value };
         case 'emotion':
           exactKeys(block, ['type', 'value'], '표정 블록');
@@ -134,12 +134,12 @@ export class ProgramRuntime {
 }
 
 export const PROGRAM_EXAMPLES = Object.freeze([
-  { id: 'feelings', name: '토끼의 마음 춤', program: {
+  { id: 'feelings', name: '두근두근 하트', program: {
     schema: 1, enabled: true, loop: true,
     blocks: [{ type: 'character', value: 'rabbit' }, { type: 'emotion', value: 'happy' }, { type: 'wait', ms: 1000 },
-      { type: 'repeat', count: 3, blocks: [{ type: 'emotion', value: 'love' }, { type: 'wait', ms: 1000 }, { type: 'emotion', value: 'excited' }, { type: 'wait', ms: 1000 }] }],
+      { type: 'emotion', value: 'love' }, { type: 'wait', ms: 1000 }],
   } },
-  { id: 'weather', name: '비 오는 날의 친구', program: {
+  { id: 'weather', name: '비 오는 날의 표정', program: {
     schema: 1, enabled: true, loop: true,
     blocks: [{ type: 'character', value: 'turtle' }, { type: 'ifWeather', kind: 'rain',
       then: [{ type: 'emotion', value: 'sleepy' }], else: [{ type: 'emotion', value: 'happy' }] },

@@ -4,47 +4,59 @@
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
   <meta name="theme-color" content="#315bf5">
-  <meta name="description" content="캐릭터를 고르고 블록을 연결해 만드는 나만의 스마트 키링">
-  <title>키링 스튜디오 · 나만의 작은 발명</title>
+  <meta name="description" content="눈과 입에 마음을 담는 나만의 우유팩 키링">
+  <title>키링 스튜디오 · 나의 우유팩 친구</title>
   <link rel="stylesheet" href="/style.css">
   <script defer src="/vendor/blockly/blockly_compressed.js"></script>
   <script defer src="/vendor/blockly/ko.js"></script>
   <script type="module" src="/app.js"></script>
 </head>
-<body data-active-tab="blocks">
+<body data-active-tab="customize">
   <header class="site-header">
     <div class="header-inner wrap">
-      <a href="#main" class="brand" aria-label="키링 스튜디오 처음으로"><span class="brand-symbol"><svg viewBox="0 0 32 32" aria-hidden="true"><path d="M11 10V7a5 5 0 0 1 10 0v3"/><rect x="5" y="10" width="22" height="19" rx="6"/><path d="M11 18h1m8 0h1m-9 5q4 3 8 0"/></svg></span><span>키링 스튜디오</span><span class="brand-tag">만들기 실험실</span></a>
+      <a href="#main" class="brand" aria-label="키링 스튜디오 처음으로"><span class="brand-symbol"><svg viewBox="0 0 32 32" aria-hidden="true"><path d="M11 10V7a5 5 0 0 1 10 0v3"/><rect x="5" y="10" width="22" height="19" rx="6"/><path d="M11 18h1m8 0h1m-9 5q4 3 8 0"/></svg></span><span>키링 스튜디오</span><span class="brand-tag">우유팩 키링 만들기</span></a>
       <div class="header-actions"><span id="connection" class="connection" role="status"><span class="status-dot"></span><span id="connection-text">키링 확인 중</span></span><button id="reconnect" class="button reconnect-button" type="button" title="키링 다시 연결"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M20 8a8 8 0 1 0 0 8m0-13v5h-5"/></svg><span>다시 연결</span></button></div>
     </div>
   </header>
 
   <main id="main" class="wrap main-wrap">
-    <section class="studio-intro" aria-labelledby="page-title"><div><p class="section-kicker">생각하고, 연결하고, 만들어 봐요</p><h1 id="page-title">작은 키링에 나만의 아이디어를!</h1></div><div class="intro-stamp"><span class="stamp-dot"></span>오늘은 내가 만드는 사람</div></section>
-    <div id="offline-note" class="notice" hidden><svg viewBox="0 0 24 24" aria-hidden="true"><rect x="4" y="3" width="16" height="18" rx="3"/><path d="M9 17h6m-3-9v4m-2-2h4"/></svg><p><strong>키링 없이도 만들 수 있어요.</strong> 여기서 코딩하고, 완성하면 내 키링에 연결해 옮겨요.</p></div>
+    <section class="studio-intro" aria-labelledby="page-title"><div><p class="section-kicker">작은 우유팩에 담는 나의 마음</p><h1 id="page-title">오늘은 어떤 표정일까?</h1></div><p class="intro-caption">눈 모양과 표정을 골라 나만의 키링을 만들어요.</p></section>
     <div id="oled-note" class="notice warning" hidden><p>OLED를 찾지 못했어요. 전원을 뽑고 GND·3.3V·SDA4·SCL5 배선을 선생님과 확인해 주세요.</p></div>
 
     <div class="studio-layout">
       <aside class="preview-column" aria-labelledby="preview-title">
         <section class="preview-panel">
-          <div class="panel-heading"><h2 id="preview-title">내 키링 미리보기</h2><span class="pixel-tag">128 × 64</span></div>
-          <div class="keyring-stage"><span class="stage-orbit orbit-one" aria-hidden="true"></span><span class="stage-orbit orbit-two" aria-hidden="true"></span><div class="keyring-object"><div class="keyring-loop" aria-hidden="true"></div><div class="keyring-body"><div class="screen-bezel"><canvas id="preview" width="128" height="64" role="img" aria-label="토끼의 행복한 표정 미리보기"></canvas></div><div class="device-caption" aria-hidden="true"><span class="device-led"></span><span>나의 첫 번째 발명</span><svg viewBox="0 0 18 18"><path d="M5 7h8m-8 4h8M7 5v8m4-8v8"/></svg></div></div></div><span class="stage-plus plus-one" aria-hidden="true">+</span><span class="stage-plus plus-two" aria-hidden="true">+</span></div>
-          <div class="preview-bottom"><div><p id="preview-name" class="preview-name">행복한 토끼</p><p id="preview-caption" class="microcopy">키링과 똑같은 픽셀로 보여요</p></div><button id="animation-toggle" class="icon-button" type="button" aria-pressed="true" aria-label="애니메이션 멈추기"><svg id="pause-icon" viewBox="0 0 24 24" aria-hidden="true"><path d="M8 6v12M16 6v12"/></svg><span id="animation-label">멈춤</span></button></div>
+          <div class="panel-heading"><h2 id="preview-title">나의 우유팩 키링</h2><span class="pixel-tag">128 × 64</span></div>
+          <div class="keyring-stage">
+            <div class="stage-halo" aria-hidden="true"></div>
+            <div class="milk-carton">
+              <div class="carton-hanger" aria-hidden="true"><span></span></div>
+              <div class="carton-seal" aria-hidden="true"></div>
+              <div class="carton-roof" aria-hidden="true"><span></span></div>
+              <div class="carton-side" aria-hidden="true"></div>
+              <div class="carton-front">
+                <div class="carton-label" aria-hidden="true"><span class="carton-label-line"></span>오늘의 마음<span class="carton-label-line"></span></div>
+                <div class="screen-bezel"><canvas id="preview" width="128" height="64" role="img" aria-label="행복한 표정 미리보기"></canvas></div>
+                <div class="carton-decoration" aria-hidden="true"><svg class="carton-heart" viewBox="0 0 28 26"><path d="M14 23 3 13C-5 3 10-3 14 5 18-3 33 3 25 13Z"/></svg><span>마음 한 팩</span><svg class="carton-sparkle" viewBox="0 0 24 24"><path d="m12 2 3 7 7 3-7 3-3 7-3-7-7-3 7-3Z"/></svg></div>
+              </div>
+            </div>
+          </div>
+          <div class="preview-bottom"><div><p id="preview-name" class="preview-name">행복한 말랑눈</p><p id="preview-caption" class="microcopy">진짜 키링에도 이 표정 그대로</p></div><button id="animation-toggle" class="icon-button" type="button" aria-pressed="true" aria-label="애니메이션 멈추기"><svg id="pause-icon" viewBox="0 0 24 24" aria-hidden="true"><path d="M8 6v12M16 6v12"/></svg><span id="animation-label">멈춤</span></button></div>
           <p id="atlas-error" class="inline-error" hidden>미리보기를 불러오지 못했어요. 새로고침해 주세요.</p>
-          <div class="preview-run-strip"><span id="preview-run-dot" class="run-dot"></span><span id="preview-run-state">블록을 연결하고 실행해 보세요</span></div>
+          <div class="preview-run-strip"><span id="preview-run-dot" class="run-dot"></span><span id="preview-run-state">표정을 고르면 바로 보여요</span></div>
         </section>
-        <div class="maker-tip"><span class="tip-number">!</span><div><strong>틀려도 괜찮아요.</strong><p>블록 순서를 바꾸면 어떤 일이 생길까요?</p></div></div>
+        <div id="offline-note" class="notice mode-note" hidden><span class="mode-dot" aria-hidden="true"></span><p>지금은 미리보기 중이에요. 키링에 연결하면 저장할 수 있어요.</p></div>
         <details class="connect-help"><summary>내 키링에 연결하는 방법</summary><ol><li>키링에 USB 전원을 연결해요.</li><li>휴대폰 Wi-Fi에서 <strong>Keyring-</strong>으로 시작하는 내 키링을 골라요.</li><li>비밀번호 <strong>keyring123</strong>을 입력해요.</li><li>브라우저에서 <strong>192.168.4.1</strong>을 열어요.</li></ol></details>
       </aside>
 
       <section class="workspace-card" aria-label="키링 만들기 작업 공간">
         <div class="workspace-tabs" role="tablist" aria-label="만들기 도구">
-          <button id="tab-customize" class="workspace-tab" type="button" role="tab" aria-selected="false" aria-controls="customize-panel" tabindex="-1"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="m4 17 12-12 3 3L7 20H4v-3Z"/><path d="m13 8 3 3M5 5h4m-2-2v4m11 8h3m-1.5-1.5v3"/></svg>꾸미기</button>
-          <button id="tab-blocks" class="workspace-tab active" type="button" role="tab" aria-selected="true" aria-controls="blocks-panel"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M4 3h6v3h4V3h6v7h-3v4h3v7h-7v-3H9v3H4v-7h3v-4H4V3Z"/></svg>블록 코딩<span class="tab-new">추천</span></button>
+          <button id="tab-customize" class="workspace-tab active" type="button" role="tab" aria-selected="true" aria-controls="customize-panel"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="m4 17 12-12 3 3L7 20H4v-3Z"/><path d="m13 8 3 3M5 5h4m-2-2v4m11 8h3m-1.5-1.5v3"/></svg>꾸미기</button>
+          <button id="tab-blocks" class="workspace-tab" type="button" role="tab" aria-selected="false" aria-controls="blocks-panel" tabindex="-1"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M4 3h6v3h4V3h6v7h-3v4h3v7h-7v-3H9v3H4v-7h3v-4H4V3Z"/></svg>블록 코딩</button>
           <button id="tab-weather" class="workspace-tab" type="button" role="tab" aria-selected="false" aria-controls="weather-panel" tabindex="-1"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M6 18a4 4 0 0 1 0-8 6 6 0 0 1 11-2 5 5 0 1 1 1 10H6Z"/></svg>날씨</button>
         </div>
 
-        <section id="blocks-panel" class="tab-panel blocks-panel" role="tabpanel" aria-labelledby="tab-blocks">
+        <section id="blocks-panel" class="tab-panel blocks-panel" role="tabpanel" aria-labelledby="tab-blocks" hidden>
           <div class="workspace-heading"><div><h2>블록으로 움직여요</h2><p>블록을 끌어 연결하고, 실행 버튼을 눌러요.</p></div><span class="workspace-label">나의 코드</span></div>
           <div class="program-tools"><label for="program-examples" class="examples-label">예제로 시작하기<select id="program-examples" aria-label="코딩 예제 선택"></select></label><button id="program-reset" class="button light compact" type="button"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M20 8a8 8 0 1 0 0 8m0-13v5h-5"/></svg>처음부터</button></div>
           <div class="blockly-shell"><div class="canvas-topbar"><span class="canvas-label"><span></span><span></span><span></span>블록 작업 공간</span><span>끌어서 연결해요</span></div><div id="blockly-workspace" aria-label="블록 코딩 작업 공간"></div></div>
@@ -54,15 +66,15 @@
           <p class="transfer-hint">키링이 없다면 코드 파일로 보관해 두세요. 나중에 연결해서 불러올 수 있어요.</p>
         </section>
 
-        <section id="customize-panel" class="tab-panel customize-panel" role="tabpanel" aria-labelledby="tab-customize" hidden>
-          <div class="workspace-heading"><div><h2>어떤 친구를 만들까요?</h2><p>좋아하는 친구와 오늘의 마음을 골라요.</p></div><span class="workspace-label yellow">나만의 모습</span></div>
-          <section class="selection-section" aria-labelledby="character-title"><div class="section-heading"><span class="step-number">1</span><h3 id="character-title">함께할 친구</h3></div><fieldset id="characters" class="choice-grid character-grid"><legend class="sr-only">캐릭터 선택</legend></fieldset></section>
-          <section class="selection-section" aria-labelledby="emotion-title"><div class="section-heading"><span class="step-number coral">2</span><h3 id="emotion-title">지금 내 마음</h3></div><fieldset id="emotions" class="choice-grid emotion-grid"><legend class="sr-only">감정 선택</legend></fieldset></section>
-          <section class="selection-section view-section" aria-labelledby="display-title"><div class="section-heading"><span class="step-number blue">3</span><h3 id="display-title">키링에 보여 줄 화면</h3></div><fieldset id="views" class="view-options"><legend class="sr-only">키링 표시 모드</legend><label class="view-option"><input type="radio" name="view" value="character" checked><span><strong>친구</strong><small>표정과 움직임</small></span></label><label class="view-option"><input type="radio" name="view" value="weather"><span><strong>날씨</strong><small>저장된 예보</small></span></label><label class="view-option"><input type="radio" name="view" value="auto"><span><strong>번갈아 보기</strong><small>친구와 날씨</small></span></label></fieldset><p id="display-hint" class="display-hint">날씨 화면은 날씨 탭에서 예보를 먼저 담아 주세요.</p></section>
+        <section id="customize-panel" class="tab-panel customize-panel" role="tabpanel" aria-labelledby="tab-customize">
+          <div class="workspace-heading"><div><h2>나만의 표정을 골라요</h2><p>눈과 입만으로도 마음을 전할 수 있어요.</p></div><span class="workspace-label yellow">지금 내 마음</span></div>
+          <section class="selection-section" aria-labelledby="character-title"><div class="section-heading"><span class="step-number">1</span><h3 id="character-title">눈 모양</h3></div><fieldset id="characters" class="choice-grid character-grid"><legend class="sr-only">눈 모양 선택</legend></fieldset></section>
+          <section class="selection-section" aria-labelledby="emotion-title"><div class="section-heading"><span class="step-number coral">2</span><h3 id="emotion-title">오늘의 표정</h3></div><fieldset id="emotions" class="choice-grid emotion-grid"><legend class="sr-only">감정 선택</legend></fieldset></section>
+          <section class="selection-section view-section" aria-labelledby="display-title"><div class="section-heading"><span class="step-number blue">3</span><h3 id="display-title">키링에 담을 화면</h3></div><fieldset id="views" class="view-options"><legend class="sr-only">키링 표시 모드</legend><label class="view-option"><input type="radio" name="view" value="character" checked><span><strong>표정</strong><small>눈과 입이 움직여요</small></span></label><label class="view-option"><input type="radio" name="view" value="weather"><span><strong>날씨</strong><small>저장된 예보</small></span></label><label class="view-option"><input type="radio" name="view" value="auto"><span><strong>번갈아 보기</strong><small>표정과 날씨</small></span></label></fieldset><p id="display-hint" class="display-hint">날씨 화면은 날씨 탭에서 예보를 먼저 담아 주세요.</p></section>
           <div class="save-area"><button id="apply" class="button primary" type="button" disabled>이 모습 키링에 저장<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M5 12h14m-5-5 5 5-5 5"/></svg></button><p id="save-state" class="save-state" role="status" aria-live="polite">키링 연결을 확인하고 있어요.</p></div>
         </section>
     <section id="weather-panel" class="tab-panel weather-card" role="tabpanel" aria-labelledby="tab-weather" hidden>
-      <div class="weather-heading"><div><p class="section-kicker">밖의 날씨도 키링 안으로</p><h2 id="weather-title">우리 동네 날씨</h2><p>날씨를 받아 두면 키링에서 다시 볼 수 있어요.</p></div><span id="weather-badge" class="weather-badge neutral">저장된 날씨 없음</span></div>
+      <div class="weather-heading"><div><p class="section-kicker">작은 날씨 친구를 만나요</p><h2 id="weather-title">오늘 하늘은 어때?</h2><p>우리 동네 날씨를 키링에 담아 두세요.</p></div><span id="weather-badge" class="weather-badge neutral">저장된 날씨 없음</span></div>
       <div class="weather-actions"><label class="city-label" for="city">우리 동네<select id="city"><option value="seoul">서울</option><option value="busan">부산</option><option value="incheon">인천</option><option value="daejeon">대전</option><option value="gwangju">광주</option><option value="daegu">대구</option><option value="jeju">제주</option></select></label><button id="fetch-weather" class="button secondary" type="button"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M19 8A8 8 0 1 0 20 15M19 3v5h-5"/></svg>실제 날씨 받기</button><button id="download-weather" class="button subtle" type="button" disabled>날씨 파일 내려받기</button></div>
       <p id="weather-action-state" class="action-state" role="status" aria-live="polite">실제 날씨를 받으려면 인터넷 연결이 필요해요.</p>
       <div class="weather-import"><label for="weather-file" class="file-button">미리 받은 날씨 파일 불러오기<input id="weather-file" type="file" accept="application/json,.json"></label><button id="sample-weather" class="text-button" type="button">연습용 날씨 보기</button><button id="sync-time" class="text-button" type="button" disabled>휴대폰 시각 맞추기</button></div>
@@ -77,10 +89,10 @@
 
       </section>
     </div>
-    <footer class="page-footer"><p>내가 만들고, 내가 움직이는 작은 키링</p><button id="reset" class="text-button danger" type="button" disabled>키링 전체 초기화</button></footer>
+    <footer class="page-footer"><p>작은 우유팩에 담긴 커다란 마음</p><button id="reset" class="text-button danger" type="button" disabled>키링 전체 초기화</button></footer>
     <div class="mobile-save-bar"><button id="apply-mobile" class="button primary" type="button" disabled>이 모습 키링에 저장<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M5 12h14m-5-5 5 5-5 5"/></svg></button><p id="save-state-mobile" class="save-state" aria-hidden="true">키링 연결을 확인하고 있어요.</p></div>
   </main>
-  <dialog id="reset-dialog" class="reset-dialog"><form method="dialog"><span class="dialog-symbol" aria-hidden="true">↺</span><h2>처음부터 다시 만들까요?</h2><p>저장된 캐릭터, 감정, 날씨와 코드가 모두 지워져요. 행복한 토끼로 다시 시작해요.</p><div class="dialog-actions"><button class="button light" value="cancel">돌아가기</button><button id="confirm-reset" class="button danger-fill" value="reset">초기화하기</button></div></form></dialog>
+  <dialog id="reset-dialog" class="reset-dialog"><form method="dialog"><span class="dialog-symbol" aria-hidden="true">↺</span><h2>처음부터 다시 만들까요?</h2><p>저장된 눈 모양, 표정, 날씨와 코드가 모두 지워져요. 행복한 말랑눈으로 다시 시작해요.</p><div class="dialog-actions"><button class="button light" value="cancel">돌아가기</button><button id="confirm-reset" class="button danger-fill" value="reset">초기화하기</button></div></form></dialog>
   <noscript><p class="notice wrap">스튜디오를 사용하려면 브라우저에서 자바스크립트를 켜 주세요.</p></noscript>
 </body>
 </html>

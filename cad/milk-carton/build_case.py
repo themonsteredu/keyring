@@ -17,8 +17,9 @@ P = dict(width=42.0, body_height=49.0, depth=32.0, wall=2.0,
          roof_rise=14.0, seal_height=3.0, lid_thickness=2.4,
          lid_clearance=0.30, lip_depth=2.8, lip_wall=1.4,
          window_width=26.0, window_height=14.5, window_y=31.5,
-         oled_width=27.3, oled_height=27.8, oled_y=30.0,
-         oled_pcb_z=5.0, oled_pcb_thickness=1.6,
+         oled_width=27.178, oled_height=27.94, oled_y=30.0,
+         oled_pcb_z=5.0, oled_pcb_thickness=1.524,
+         oled_header_edge_offset=1.8, oled_header_clearance=15.2,
          esp_width=18.0, esp_height=22.5, esp_y=3.0,
          usb_width=16.0, usb_depth=10.0, usb_z=25.0,
          ring_outer_d=12.0, ring_hole_d=5.5, ring_thickness=5.0,
@@ -107,7 +108,11 @@ def build(p):
                  p['oled_width'],p['oled_height'],p['oled_pcb_thickness'])
     oled_glass=box(0,p['window_y'],p['oled_pcb_z']-1.4,27.0,19.5,2.8)
     esp_pcb=box(0,p['esp_y']+p['esp_height']/2,d-4.8,p['esp_width'],p['esp_height'],1.6)
-    oled_header=box(0,p['oled_y']-p['oled_height']/2+1.7,p['oled_pcb_z']+5.8,10.5,3.0,8.0)
+    # User diagram: VCC/GND/SCL/SDA header at TOP in front view.
+    # 15.2 mm is a provisional connector + female-jumper keep-out, not a measured dimension.
+    oled_header=box(0,p['oled_y']+p['oled_height']/2-p['oled_header_edge_offset'],
+                    p['oled_pcb_z']+p['oled_pcb_thickness']+p['oled_header_clearance']/2,
+                    10.5,3.0,p['oled_header_clearance'])
     esp_headers=box(-7.6,14,22,2.5,19,8).union(box(7.6,14,22,2.5,19,8))
     usb_socket=box(0,3.4,p['usb_z'],9.2,4.6,3.2)
     usb_cable=box(0,-3,p['usb_z'],13,10,8)
@@ -148,7 +153,14 @@ def validate_stl(path):
                 bounds_mm=bounds,sha256=hashlib.sha256(data).hexdigest())
 
 def generate(p, out=OUT):
-    out.mkdir(parents=True,exist_ok=True); parts=build(p); report={'units':'mm','hardware_fit':'UNVERIFIED prototype; measure module and test-print first','parameters':p,'parts':{},'checks':{}}
+    out.mkdir(parents=True,exist_ok=True); parts=build(p)
+    report={'units':'mm','hardware_fit':'UNVERIFIED physical fit; PCB outline follows user product diagram; connector assembly dimensions remain provisional',
+            'oled_reference':{'source':'User-provided product dimension screenshot, 2026-10-24',
+                'pcb_width_in':1.07,'pcb_height_in':1.10,'provisional_pcb_thickness_in':0.06,
+                'front_top_pin_order':['VCC','GND','SCL','SDA'],
+                'esp32_mapping':['3.3V','GND','GPIO5','GPIO4'],
+                'unconfirmed':'PCB thickness is provisional because side-view witness lines are ambiguous; mounting-hole pitch and screen offset are not fixed from this drawing; 15.2 mm connector keep-out is an allowance, not a measured attached jumper length'},
+            'parameters':p,'parts':{},'checks':{}}
     for name in ('body','lid_print','oled_fit_check'):
         part=parts[name]
         assert part.val().isValid() and len(part.solids().vals())==1,(name,'invalid CAD solid')

@@ -59,6 +59,6 @@ Vercel의 HTTPS 주소는 학생용 온라인 꾸미기·블록코딩과 날씨 
 
 ## 기존 프로젝트와 배포 확인
 
-Vercel 계정 로그인을 완료했고 팀 `themonsteredu`의 기존 `keyring` 프로젝트와 운영 주소 `https://keyring-swart.vercel.app`를 확인했습니다. 2026-10-24에 우유팩 표정·한글 날씨 버전을 이 운영 주소로 배포했습니다. Vercel의 READY 상태와 로그인 없는 HTTP 200, 새 제목, 주요 웹 자산의 원본 일치를 확인했습니다.
+Vercel 계정 로그인을 완료했고 팀 `themonsteredu`의 기존 `keyring` 프로젝트와 운영 주소 `https://keyring-swart.vercel.app`를 확인했습니다. 2026-10-24에 2.2.0의 도톰한 표정·간결한 대시보드·온도와 습도 날씨 화면을 이 운영 주소로 배포했습니다. Vercel의 READY 상태와 로그인 없는 HTTP 200, 새 제목, 주요 웹 자산의 원본 일치를 확인했습니다.
 
-운영 주소의 실제 Chromium에서 표정 변경·Blockly 실행·실제 서울 날씨 수신과 24개 예보를 확인했습니다. 빌드·테스트와 배포의 최신 실행 결과는 [검증 기록](verification.md)을 참고합니다. 실물 OLED의 새 표정·한글 표시 확인은 [교사용 확인표](teacher-guide.md)로 별도로 진행합니다.
+운영 주소의 실제 Chromium에서 표정 변경·Blockly 실행·실제 서울 온도·습도 수신과 24개 예보를 확인했습니다. 빌드·테스트와 배포의 최신 실행 결과는 [검증 기록](verification.md)을 참고합니다. 실물 OLED의 새 표정·한글 표시 확인은 [교사용 확인표](teacher-guide.md)로 별도로 진행합니다.
